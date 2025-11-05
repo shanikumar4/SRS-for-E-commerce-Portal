@@ -12,7 +12,7 @@ https://docs.djangoproject.com/en/4.2/ref/settings/
 import os
 from pathlib import Path
 import dj_database_url
-# Build paths inside the project like this: BASE_DIR / 'subdir'.
+# Build paths inside the project like this: BASE_DIR / 'subdir'
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 
@@ -30,7 +30,7 @@ RAILWAY_STATIC_URL = os.environ.get('RAILWAY_STATIC_URL')
 if RAILWAY_STATIC_URL:
     ALLOWED_HOSTS = [RAILWAY_STATIC_URL.split('//')[1]]
 else:
-    ALLOWED_HOSTS = ["*"]
+    ALLOWED_HOSTS = ["srs-for-e-commerce-portal.production.up.railway.app"]
 
 
 # Application definition
