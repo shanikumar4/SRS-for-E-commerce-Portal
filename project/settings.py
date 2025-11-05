@@ -25,7 +25,12 @@ SECRET_KEY = 'django-insecure-*yz=)pjw$*5m5l-1+yxq*y*u%^h12yb9zpmpf!5-ooqn=i@ru%
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ["*"]
+
+RAILWAY_STATIC_URL = os.environ.get('RAILWAY_STATIC_URL')
+if RAILWAY_STATIC_URL:
+    ALLOWED_HOSTS = [RAILWAY_STATIC_URL.split('//')[1]]
+else:
+    ALLOWED_HOSTS = ["*"]
 
 
 # Application definition
@@ -78,17 +83,23 @@ WSGI_APPLICATION = 'project.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/4.2/ref/settings/#databases
 
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.mysql',
-        'NAME': 'task8',
-        'USER': 'root',
-        'PASSWORD': 'Shani@2007',
-        'HOST':'localhost',
-        'PORT':'3306',
-    }
-}
+# DATABASES = {
+#     'default': {
+#         'ENGINE': 'django.db.backends.mysql',
+#         'NAME': 'task8',
+#         'USER': 'root',
+#         'PASSWORD': 'Shani@2007',
+#         'HOST':'localhost',
+#         'PORT':'3306',
+#     }
+# }
 
+DATABASES = {
+    'default': dj_database_url.config(
+        default=os.environ.get('DATABASE_URL'),
+        conn_max_age=600
+    )
+}
 
 
 # Password validation
@@ -146,3 +157,7 @@ import os
 
 MEDIA_ROOT =  os.path.join(BASE_DIR, 'media')
 MEDIA_URL = '/media/'
+
+
+import os
+import dj_database_url
