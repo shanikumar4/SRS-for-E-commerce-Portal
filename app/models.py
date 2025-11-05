@@ -1,0 +1,44 @@
+from django.db import models
+from django.contrib.auth.models import AbstractUser
+import datetime
+# from app.views import user_directory_path
+
+
+
+
+class User(AbstractUser):
+    username=None
+    email = models.EmailField(unique=True)
+    phone_No =models.CharField(max_length=10)
+    GENDER_CHOICES = (
+        ('Male', 'MALE'),
+        ('Female', 'FEMALE'),
+        ('Other', 'OTHER')
+    )
+    gender = models.CharField(max_length=15, choices=GENDER_CHOICES)
+    profileImage = models.ImageField(upload_to="profileImg/")
+    
+    
+ 
+    
+    
+    USERNAME_FIELD = 'email'
+    REQUIRED_FIELDS=[]
+    
+    
+    
+class products(models.Model):
+    name = models.CharField(max_length=200)
+    description = models.CharField(max_length=1000)
+    price= models.IntegerField()
+    stock = models.IntegerField()
+    createAt= models.DateTimeField(auto_now_add=True)
+    updateAt= models.DateTimeField(null= True, blank=True)
+    deleteAt= models.DateTimeField(null= True, blank=True)
+    active = models.BooleanField(default=True)
+    
+    
+    
+class productImage(models.Model):
+    prdoucts = models.ForeignKey(products,on_delete= models.CASCADE)
+    image= models.ImageField(upload_to="images/")
