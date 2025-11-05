@@ -28,9 +28,9 @@ DEBUG = True
 
 RAILWAY_STATIC_URL = os.environ.get('RAILWAY_STATIC_URL')
 if RAILWAY_STATIC_URL:
-    ALLOWED_HOSTS = [RAILWAY_STATIC_URL.split('//')[1]]
+     ALLOWED_HOSTS = ["srs-for-e-commerce-portal.production.up.railway.app"]
 else:
-    ALLOWED_HOSTS = ["srs-for-e-commerce-portal.production.up.railway.app"]
+    ALLOWED_HOSTS = ["*"]
 
 
 # Application definition
