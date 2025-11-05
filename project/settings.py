@@ -32,6 +32,7 @@ if RAILWAY_STATIC_URL:
 else:
     ALLOWED_HOSTS = ["*"]
 
+ALLOWED_HOSTS = ["*"]
 
 # Application definition
 
