@@ -1,6 +1,7 @@
 import re
 from django.http import JsonResponse
-from app.models import User
+from app.models import User, products, productImage
+from django.utils import timezone
 
 
 def validate_pass(password):
@@ -43,9 +44,7 @@ def FirstName(name):
 
 
 def LastName(name):
-    if name is None:
-        return True
-    if re.match("^[A-Za-z]+$", name):
+    if name is None or re.match("^[A-Za-z]*$", name):
         return True
     else:
         return False
@@ -107,7 +106,7 @@ def convert_gender(gender):
 
 
 def validate(title):
-    if id is None or re.match("^\S+$", title) and len(title) >= 200:
+    if title is None or re.match("^\S+$", title) and len(title) >= 200:
         return False
     else:
         return True
@@ -120,6 +119,9 @@ def validate_dis(dis):
         return True
 
 
+
+
+
 def updateUserDetails(firstName, lastName,  gender, phoneNo, profielimg, userid):
     flag = 0
     if firstName and FirstName(firstName):
@@ -127,7 +129,7 @@ def updateUserDetails(firstName, lastName,  gender, phoneNo, profielimg, userid)
         flag = 1
     if lastName and LastName(lastName):
         x = User.objects.filter(id=userid).update(last_name=lastName)
-        flag = 1
+        flag = 1    
     if gender and validate_gender(gender):
         x = User.objects.filter(id=userid).update(gender=gender)
         flag = 1
@@ -136,6 +138,29 @@ def updateUserDetails(firstName, lastName,  gender, phoneNo, profielimg, userid)
         flag = 1
     if profielimg:
         x = User.objects.filter(id=userid).update(profileImage=profielimg)
+        flag = 1
+    if flag == 1:
+        return True
+    else:
+        return False
+
+
+def updateProductDetails(updateid, name,  description, price, stock, upcategory):
+    flag = 0
+    if name and validate(name):
+        products.objects.filter(id=updateid).update(name=name, updateAt = timezone.now())
+        flag = 1
+    if description and validate(description):
+        products.objects.filter(id=updateid).update(description=description, updateAt = timezone.now())
+        flag = 1
+    if price:
+        products.objects.filter(id=updateid).update(price=price, updateAt = timezone.now())
+        flag = 1
+    if stock:
+        products.objects.filter(id=updateid).update(stock=stock, updateAt = timezone.now())
+        flag = 1
+    if upcategory:
+        products.objects.filter(id=updateid).update(category=upcategory)
         flag = 1
     if flag == 1:
         return True

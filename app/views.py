@@ -17,6 +17,7 @@ from app.function import (
     validate,
     validate_dis,
     updateUserDetails,
+    updateProductDetails,
 )
 from app.models import User
 from django.forms.models import model_to_dict
@@ -27,6 +28,15 @@ def gender(request):
     if request.method == "GET":
         data = ["Male", "Female", "Other"]
         return JsonResponse({"gender": data}, status=200)
+
+    else:
+        return JsonResponse({"msg": "method not allowed"}, status=405)
+
+
+def productCategory(request):
+    if request.method == "GET":
+        data = ["Amber", "Floral", "Fresh", "Woody"]
+        return JsonResponse({"flavour": data}, status=200)
 
     else:
         return JsonResponse({"msg": "method not allowed"}, status=405)
@@ -46,10 +56,21 @@ def signupview(request):
         phoneNo = request.POST.get("phone_No")
         gender = request.POST.get("gender")
         password = request.POST.get("password")
-        conf_password =request.POST.get("Confirm_password")
-        profileImg = request.FILES.get("profileImage")
+        conf_password = request.POST.get("Confirm_password")
+        profileImg = request.FILES.get("image")
         
+        print(first_name)
+        print(last_name)
+        print(email)
+        print(phoneNo)
+        print(gender)
+        print(password)
+        print(conf_password)
+        print(profileImg)
         
+        print(request.POST)
+        
+
         gendervalidate = validate_gender(gender)
 
         if (
@@ -59,7 +80,7 @@ def signupview(request):
             and conf_password
             and phoneNo
             and gender
-            and profileImg
+            # and profileImg
         ):
             if User.objects.filter(email=email).exists():
                 return JsonResponse(
@@ -110,7 +131,7 @@ def signupview(request):
                     last_name=last_name,
                     phone_No=phoneNo,
                     gender=gendervalidate,
-                    profileImage = profileImg,
+                    profileImage=profileImg,
                 )
 
                 user.set_password(password)
@@ -171,14 +192,13 @@ def updateUser(request):
 
         currentUser = request.user
         userid = currentUser.id
-   
+
         first_name = request.POST.get("first_name")
         last_name = request.POST.get("last_name")
         phoneNo = request.POST.get("phone_No")
         gender = request.POST.get("gender")
         profileImg = request.FILES.get("profileImage")
-        print(profileImg)
-     
+
         if not User.objects.filter(id=userid).exists():
             return JsonResponse({"msg": "id not found"}, status=400)
 
@@ -223,20 +243,24 @@ def userdetails(request):
 
         if user.is_authenticated:
 
-            # columns = [
-            #     "first_name",
-            #     "last_name",
-            #     "email",
-            #     "phone_No",
-            #     "date_of_birth",
-            #     "gender",
-            #     "profileImage",
-            # ]
+            # imgUrl = user.profileImage.url
 
-            # data = model_to_dict(user, fields=columns)
+            columns = [
+                "first_name",
+                "last_name",
+                "email",
+                "phone_No",
+                "date_of_birth",
+                "gender",
+            ]
 
-            # return JsonResponse(data, status=200)
-            return JsonResponse({'image_url' : user.profileImage.url},status=200)
+            data = model_to_dict(user, fields=columns)
+            if user.profileImage:
+                data["image_url"] = user.profileImage.url
+            else:
+                data["image_url"] = None
+
+            return JsonResponse(data, status=200)
         else:
             return JsonResponse({"msg": "user not login"}, status=400)
     else:
@@ -246,10 +270,18 @@ def userdetails(request):
 def addproduct(request):
     if request.method == "POST":
 
+        current_user = request.user
+        admin = current_user.is_superuser
+
+        if not admin:
+            return JsonResponse({"msg": "only admin have access"}, status=400)
+        
+        
         name = request.POST.get("name")
         description = request.POST.get("description")
         price = request.POST.get("price")
         stock = request.POST.get("stock")
+        category = request.POST.get("category")
 
         images = request.FILES.getlist("image")
 
@@ -260,11 +292,12 @@ def addproduct(request):
                     description=description,
                     price=price,
                     stock=stock,
+                    category=category,
                 )
                 product.save()
 
                 for image in images:
-                    productImage.objects.create(prdoucts=product, image=image)
+                    productImage.objects.create(products=product, image=image)
 
                 return JsonResponse({"msg": "product added successfully"}, status=201)
             else:
@@ -279,17 +312,19 @@ def addproduct(request):
 
 
 def updateProduct(request):
-    if request.method == "PUT":
+    if request.method == "POST":
+        
         if not request.body.strip():
             return JsonResponse({"msg": "Enter The User Informations"}, status=400)
-
-
 
         name = request.POST.get("name")
         description = request.POST.get("description")
         price = request.POST.get("price")
         stock = request.POST.get("stock")
-        images = request.FILES.getlist("image")
+        images = request.FILES.get("image")
+        updateid = request.POST.get("id")
+        productImgId = request.POST.get("productImgId")
+        category = request.POST.get("category")
 
         if not validate(name):
             return JsonResponse(
@@ -302,58 +337,108 @@ def updateProduct(request):
         if validate_id(updateid):
             return JsonResponse({"msg": "id required"}, status=400)
 
-        if not blogs.objects.filter(id=updateid).exists():
+        if not products.objects.filter(id=updateid).exists():
             return JsonResponse({"msg": "id not found"}, status=400)
 
         current_user = request.user
-        cid = current_user.id
+        admin = current_user.is_superuser
+
+        if not admin:
+            return JsonResponse({"msg": "only admin have access"}, status=400)
 
         if current_user.is_authenticated:
 
-            if updateid is not None and updateTitle is not None and updatedis is None:
-                x = blogs.objects.filter(id=updateid, user_id=cid, active=True).update(
-                    title=updateTitle, update=timezone.now()
-                )
-                if not x:
-                    return JsonResponse({"msg": "user is not loged in"}, status=401)
-                return JsonResponse({"msg": "Titile Updated successfully"}, status=200)
-
-            if updateid is not None and updatedis is not None and updateTitle is None:
-                x = blogs.objects.filter(id=updateid, user_id=cid).update(
-                    description=updatedis, update=timezone.now()
-                )
-                if not x:
-                    return JsonResponse({"msg": "user is not loged in"}, status=401)
+            if updateProductDetails(updateid, name, description, price, stock, category):
+                img = productImage.objects.get(products_id=updateid, id=productImgId)
+                img.image = images
+                img.save()
 
                 return JsonResponse(
-                    {"msg": "description Updated successfully"}, status=200
-                )
-
-            if (
-                updateid is not None
-                and updateTitle is not None
-                and updatedis is not None
-            ):
-                x = blogs.objects.filter(id=updateid, user_id=cid).update(
-                    title=updateTitle, description=updatedis, update=timezone.now()
-                )
-                if not x:
-                    return JsonResponse({"msg": "user is not loged in"}, status=401)
-
-                return JsonResponse(
-                    {"msg": "title and ddescription Updated successfully"}, status=200
-                )
-            if updateid is not None and updateTitle is None and updatedis is None:
-
-                return JsonResponse(
-                    {"msg": "Enter title or description for update"}, status=400
+                    {"msg": "Products details update successfully"}, status=200
                 )
 
             else:
-                return JsonResponse({"msg": "task was not found"}, status=400)
+                return JsonResponse({"msg": "product was not found"}, status=400)
 
         else:
             return JsonResponse({"msg": "You are not Login"}, status=400)
 
     else:
         return JsonResponse({"msg": "method not allowed"}, status=405)
+
+
+def deleteProduct(request):
+    if request.method == "DELETE":
+
+        delid = request.GET.get("id")
+
+        current_user = request.user
+        admin = current_user.is_superuser
+
+        if not admin:
+            return JsonResponse({"msg": "only admin have access"}, status=400)
+
+        if current_user.is_authenticated:
+
+            if not delid:
+                return JsonResponse({"msg": "id required"}, status=400)
+
+            if products.objects.filter(id=delid, active=True):
+
+                products.objects.filter(id=delid).update(
+                    active=False, deleteAt=timezone.now()
+                )
+                return JsonResponse({"msg": "product deleted successfully"})
+
+            else:
+                return JsonResponse({"msg": "invalid delid"}, status=400)
+        else:
+            return JsonResponse({"msg": "You are not Login"}, status=400)
+
+    else:
+        return JsonResponse({"msg": "method not allowed"}, status=405)
+
+
+def productDetails(request):
+    
+    
+    if request.method == "GET":
+        user = request.user
+        
+        if  user.is_superuser==0: 
+            return JsonResponse({"msg": "only admin can access"}, status=400) 
+        
+        if user.is_authenticated:
+
+            # imgUrl = user.profileImage.url
+
+            allProduct = products.objects.filter(active=True)
+
+            data = []
+
+            columns = [
+                "name",
+                "description",
+                "price",
+                "stock",
+                "category",
+            ]
+
+            for product in allProduct:
+                productdata = model_to_dict(product, fields=columns)
+
+                allproductimg = productImage.objects.filter(products_id=product.id)
+
+                imgurl = [img.image.url for img in allproductimg if img.image]
+                productdata["imgurl"] = imgurl
+                data.append(productdata)
+
+            return JsonResponse(data, safe=False, status=200)
+        else:
+            return JsonResponse({"msg": "user not login"}, status=400)
+    else:
+        return JsonResponse({"msg": "Method not allowed"}, status=405)
+
+
+
+

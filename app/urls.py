@@ -1,20 +1,29 @@
 from django.urls import path
-from app.views import signupview, updateUser, loginview, logoutview, addproduct, userdetails, gender
-
-
+from app.views import (
+    signupview,
+    updateUser,
+    loginview,
+    logoutview,
+    addproduct,
+    userdetails,
+    gender,
+    updateProduct,
+    deleteProduct,
+    productDetails,
+    productCategory,
+)
 
 
 urlpatterns = [
-    path('signup/', signupview),
-    path('login/', loginview),
-    path('updateuser/', updateUser),
-    path('logout/', logoutview),
-    path('addproduct/', addproduct),
-    path('details/', userdetails),
-    path('gender/', gender),
-    
-
-] 
-
-
-
+    path("signup/", signupview),
+    path("login/", loginview),
+    path("updateuser/", updateUser),
+    path("logout/", logoutview),
+    path("addproduct/", addproduct),
+    path("details/", userdetails),
+    path("gender/", gender),
+    path("updateproduct/", updateProduct),
+    path("deleteproduct/", deleteProduct),
+    path("productdetails/", productDetails),
+    path("productcategory/", productCategory),
+]

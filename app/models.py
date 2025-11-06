@@ -36,9 +36,21 @@ class products(models.Model):
     updateAt= models.DateTimeField(null= True, blank=True)
     deleteAt= models.DateTimeField(null= True, blank=True)
     active = models.BooleanField(default=True)
+    productCategory =(
+        ('Amber', 'Amber'),
+        ('Floral', 'Floral'),
+        ('Fresh', 'Fresh'),
+        ('Woody', 'Woody'),
+    ) 
+    category = models.CharField(max_length=6, choices=productCategory)
     
     
     
 class productImage(models.Model):
-    prdoucts = models.ForeignKey(products,on_delete= models.CASCADE)
+    products = models.ForeignKey(products,on_delete= models.CASCADE)
     image= models.ImageField(upload_to="images/")
+    
+    
+    
+# class ProductStatus(models.Model):
+      
