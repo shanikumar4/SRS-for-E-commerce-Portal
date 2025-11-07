@@ -52,5 +52,25 @@ class productImage(models.Model):
     
     
     
-# class ProductStatus(models.Model):
+class CartItem(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    products = models.ForeignKey(products, on_delete=models.CASCADE)
+    quantity  = models.IntegerField(default = 1)
+    
+    
+    
+class Order(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    createAt= models.DateTimeField(auto_now_add=True)
+    totalPrice = models.IntegerField()
+    shippingAddress = models.TextField()
+    
+    
+# class OrderItem(models.Model):
+#     order = models.ForeignKey(Order, on_delete=models.CASCADE)
+#     product = models.ForeignKey(products, on_delete=models.CASCADE)
+#     quantity = models.IntegerField()
+#     price = models.IntegerField()
+    
+    
       

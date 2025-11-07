@@ -2,7 +2,7 @@ from django.shortcuts import render, redirect
 from django.http import JsonResponse
 from django.contrib.auth import authenticate, login, logout
 import re, json
-from .models import products, productImage
+from .models import products, productImage, CartItem, Order
 from django.utils import timezone
 from app.function import (
     validate_email,
@@ -405,8 +405,8 @@ def productDetails(request):
     if request.method == "GET":
         user = request.user
         
-        if  user.is_superuser==0: 
-            return JsonResponse({"msg": "only admin can access"}, status=400) 
+        # if  user.is_superuser==0: 
+        #     return JsonResponse({"msg": "only admin can access"}, status=400) 
         
         if user.is_authenticated:
 
@@ -422,6 +422,7 @@ def productDetails(request):
                 "price",
                 "stock",
                 "category",
+                "id",
             ]
 
             for product in allProduct:
@@ -438,6 +439,99 @@ def productDetails(request):
             return JsonResponse({"msg": "user not login"}, status=400)
     else:
         return JsonResponse({"msg": "Method not allowed"}, status=405)
+
+
+
+def addtocart(request):
+    if request.method == "POST":
+        if not request.body.strip():
+            return JsonResponse({"msg": "body can't be null"}, status= 400)
+       
+        user = request.user
+            
+        # data = json.loads(request.body) 
+        productid = request.POST.get('productid')
+        quantity = request.POST.get('quantity')
+        product = products.objects.filter(id = productid).values("stock")
+        if quantity is None or quantity=="0" or quantity==0:
+         quantity =1 
+        
+        if user.is_authenticated:    
+            stock = product[0].get("stock")
+            stock = int(stock)
+            quantity=int(quantity)
+            print(stock)
+            newstock = int(stock)-int(quantity)
+            print(newstock)
+            if quantity>stock:
+                return JsonResponse({"msg": "product unavaliabe"}, status = 400)
+                
+            
+            
+            if productid is None:
+                return JsonResponse({"msg": "product id required"}, status=400)
+                
+       
+      
+            
+            if productid:
+                item = CartItem.objects.create(
+                    user_id = user.id,
+                    products_id = productid,
+                    quantity = quantity
+                )
+                
+                products.objects.filter(id=productid).update(stock=newstock, updateAt = timezone.now())
+                
+                return JsonResponse({"msg": "item added to cart"}, status=201)
+            
+            else:
+                return JsonResponse({"msg": "enter product id"}, status=201)
+        
+        else:
+             return JsonResponse({"msg": "authentication required"}, status=401)
+                       
+    else:
+         return JsonResponse({"msg": "Method Not Allowed"}, status=405)   
+    
+    
+def removeFromCart(request):
+    if request.method == "DELETE":
+
+        productid = request.GET.get("id")
+
+        current_user = request.user
+        
+        userid = current_user.id
+
+        if current_user.is_authenticated:
+            product = products.objects.filter(id = productid).values("stock")
+            stock = product[0].get("stock")
+
+            if not productid:
+                return JsonResponse({"msg": "id required"}, status=400)
+
+            if CartItem.objects.filter(products_id = productid, user_id= userid):
+                addstock = CartItem.objects.filter(products_id = productid, user_id= userid).aggregate(sum = sum('quantity'), default = 0)
+                stock = int(stock)
+                addstock= int(addstock)
+                newstock = stock+ addstock
+            
+                CartItem.objects.filter(products_id = productid, user_id= userid).delete()
+
+                products.objects.filter(id=productid).update(stock=newstock, updateAt = timezone.now())
+                
+                
+                
+                return JsonResponse({"msg": "product removed from cart"})
+
+            else:
+                return JsonResponse({"msg": "invalid product id"}, status=400)
+        else:
+            return JsonResponse({"msg": "You are not Login"}, status=400)
+
+    else:
+        return JsonResponse({"msg": "method not allowed"}, status=405)
 
 
 
