@@ -2,8 +2,10 @@ from django.shortcuts import render, redirect
 from django.http import JsonResponse
 from django.contrib.auth import authenticate, login, logout
 import re, json
-from .models import products, productImage, CartItem, Order
+from .models import products, productImage, CartItem, Order, OrderItem
 from django.utils import timezone
+from django.db.models import Sum
+# from PIL import Image
 from app.function import (
     validate_email,
     validate_pass,
@@ -18,6 +20,8 @@ from app.function import (
     validate_dis,
     updateUserDetails,
     updateProductDetails,
+    validateprice,
+    validateimage,
 )
 from app.models import User
 from django.forms.models import model_to_dict
@@ -58,19 +62,7 @@ def signupview(request):
         password = request.POST.get("password")
         conf_password = request.POST.get("Confirm_password")
         profileImg = request.FILES.get("image")
-        
-        print(first_name)
-        print(last_name)
-        print(email)
-        print(phoneNo)
-        print(gender)
-        print(password)
-        print(conf_password)
-        print(profileImg)
-        
-        print(request.POST)
-        
-
+     
         gendervalidate = validate_gender(gender)
 
         if (
@@ -153,7 +145,8 @@ def loginview(request):
 
         data = json.loads(request.body)
         email = data.get("email")
-        password = data.get("password")
+        password = data.get("password") 
+        
         if request.user.is_authenticated:
             return JsonResponse({"msg": "User already logged in "}, status=200)
 
@@ -284,7 +277,31 @@ def addproduct(request):
         category = request.POST.get("category")
 
         images = request.FILES.getlist("image")
-
+        
+        # for img in images:
+        #      Image.open(img.file)
+        #      Image.verify()
+             
+        #      return JsonResponse({"msg": "invalid image"}, status=400)
+                
+        
+        
+        
+        categoryItem =  ['Amber','Floral', 'Fresh', 'Woody']
+        
+        if not category in categoryItem:
+             return JsonResponse({"msg": "invalid category"}, status=400)
+        if not validateprice(price):
+            return JsonResponse({"msg": "invalid price"}, status=400)
+        if not validateprice(stock):
+            return JsonResponse({"msg": "invalid stock"}, status=400)
+        if not validate(name):
+            return JsonResponse({"msg": "invalid name"}, status=400)
+        if not validate_dis(description):
+            return JsonResponse({"msg": "invalid description"}, status=400)
+            
+        
+        
         if request.user.is_authenticated:
             if name and description:
                 product = products(
@@ -320,20 +337,26 @@ def updateProduct(request):
         name = request.POST.get("name")
         description = request.POST.get("description")
         price = request.POST.get("price")
-        stock = request.POST.get("stock")
+        stock = request.POST.get("stock")   
         images = request.FILES.get("image")
         updateid = request.POST.get("id")
         productImgId = request.POST.get("productImgId")
         category = request.POST.get("category")
 
+       
+        categoryItem =  ['Amber','Floral', 'Fresh', 'Woody']
+        
+        if not category in categoryItem:
+             return JsonResponse({"msg": "invalid category"}, status=400)
+        if not validateprice(price):
+            return JsonResponse({"msg": "invalid price"}, status=400)
+        if not validateprice(stock):
+            return JsonResponse({"msg": "invalid stock"}, status=400)
         if not validate(name):
-            return JsonResponse(
-                {"msg": "Title must less then 200 characters"}, status=400
-            )
-
+            return JsonResponse({"msg": "invalid name"}, status=400)
         if not validate_dis(description):
-            return JsonResponse({"msg": "Enter Discription"}, status=400)
-
+            return JsonResponse({"msg": "invalid description"}, status=400)
+            
         if validate_id(updateid):
             return JsonResponse({"msg": "id required"}, status=400)
 
@@ -349,9 +372,10 @@ def updateProduct(request):
         if current_user.is_authenticated:
 
             if updateProductDetails(updateid, name, description, price, stock, category):
-                img = productImage.objects.get(products_id=updateid, id=productImgId)
-                img.image = images
-                img.save()
+                if productImgId:
+                    img = productImage.objects.get(products_id=updateid, id=productImgId)
+                    img.image = images
+                    img.save()
 
                 return JsonResponse(
                     {"msg": "Products details update successfully"}, status=200
@@ -439,6 +463,56 @@ def productDetails(request):
             return JsonResponse({"msg": "user not login"}, status=400)
     else:
         return JsonResponse({"msg": "Method not allowed"}, status=405)
+    
+
+
+def filterproduct(request):
+     if request.method == "GET":
+        user = request.user
+        filterby = request.GET.get("input", default = "all")
+        
+        if filterby is None:
+             
+            return JsonResponse({"msg": "enter category or price"}, status=400)
+        
+        
+        if user.is_authenticated:
+            category = ['Amber','Floral', 'Fresh', 'Woody']
+            if filterby in category:
+                allProduct = products.objects.filter(active=True, category = filterby)
+            if re.match("^[0-9]*$", filterby):
+                allProduct = products.objects.filter(active=True, price = filterby)
+                
+            if filterby == "all":
+                allProduct = products.objects.filter(active=True)
+                
+            
+            
+            data = []
+
+            columns = [
+                        "name",
+                        "description",
+                        "price",
+                        "stock",
+                        "category",
+                        "id",
+                    ]
+            for product in allProduct:
+                        productdata = model_to_dict(product, fields=columns)
+
+                        allproductimg = productImage.objects.filter(products_id=product.id)
+
+                        imgurl = [img.image.url for img in allproductimg if img.image]
+                        productdata["imgurl"] = imgurl
+                        data.append(productdata)
+
+            return JsonResponse(data, safe=False, status=200)    
+        else:
+            return JsonResponse({"msg": "user not login"}, status=400)
+     else:
+        return JsonResponse({"msg": "Method not allowed"}, status=405)
+    
 
 
 
@@ -452,6 +526,10 @@ def addtocart(request):
         # data = json.loads(request.body) 
         productid = request.POST.get('productid')
         quantity = request.POST.get('quantity')
+        
+        if products.objects.filter(id=productid, active = False):
+            return JsonResponse({"msg": "invalid product id"}, status = 400)
+        
         product = products.objects.filter(id = productid).values("stock")
         if quantity is None or quantity=="0" or quantity==0:
          quantity =1 
@@ -461,10 +539,11 @@ def addtocart(request):
             stock = int(stock)
             quantity=int(quantity)
             print(stock)
+            if quantity>stock:
+              return JsonResponse({"msg": "product unavaliabe"}, status = 400)
             newstock = int(stock)-int(quantity)
             print(newstock)
-            if quantity>stock:
-                return JsonResponse({"msg": "product unavaliabe"}, status = 400)
+            
                 
             
             
@@ -483,7 +562,37 @@ def addtocart(request):
                 
                 products.objects.filter(id=productid).update(stock=newstock, updateAt = timezone.now())
                 
-                return JsonResponse({"msg": "item added to cart"}, status=201)
+                allProduct = CartItem.objects.filter(user_id = user.id)
+                      
+                data = []
+
+                columns = [
+                    "quantity"
+                ]
+                
+                
+                
+                
+
+                for product in allProduct:
+                    productdata = model_to_dict(product, fields=columns)
+
+                    # allproductimg = productImage.objects.filter(products_id=product.id)
+
+                    # imgurl = [img.image.url for img in allproductimg if img.image]
+                    # productdata["imgurl"] = imgurl
+                    data.append(productdata)
+                    
+                    
+                newid = allProduct.get("products_id")
+                
+                print(newid)                    
+                    
+                
+
+                return JsonResponse(data,safe=False, status=200)
+                
+                # return JsonResponse(, status=201)
             
             else:
                 return JsonResponse({"msg": "enter product id"}, status=201)
@@ -512,10 +621,9 @@ def removeFromCart(request):
                 return JsonResponse({"msg": "id required"}, status=400)
 
             if CartItem.objects.filter(products_id = productid, user_id= userid):
-                addstock = CartItem.objects.filter(products_id = productid, user_id= userid).aggregate(sum = sum('quantity'), default = 0)
-                stock = int(stock)
-                addstock= int(addstock)
-                newstock = stock+ addstock
+                addstock = CartItem.objects.filter(products_id = productid, user_id= userid).aggregate(sum = Sum('quantity', default = 0))
+                
+                newstock = stock+ addstock.get('sum')
             
                 CartItem.objects.filter(products_id = productid, user_id= userid).delete()
 
@@ -532,7 +640,53 @@ def removeFromCart(request):
 
     else:
         return JsonResponse({"msg": "method not allowed"}, status=405)
+    
+    
+    
 
+def order(request):
+    if request.method == 'POST':
+        
+        totalprice = request.POST.get("totalPrice")
+        address = request.POST.get("address")
+        user= request.user
+        userid = user.id
+        
+        
+        if not totalprice:
+            return JsonResponse({"msg": "Total price required"}, status=400)
+        if not address:
+            return JsonResponse({"msg": "Address required"}, status=400)
+        
+        
+        
+        if user.is_authenticated:
+            
+            Order.objects.create(
+                totalPrice = totalprice,
+                shippingAddress = address,
+                user_id = userid
+            )
+            
+            productid = CartItem.objects.filter(user_id = userid).values("products_id")
+            quantity = CartItem.objects.filter(user_id = userid).values("quantity")
+            
+            print(productid)
+            
+            
+            # for i in productid:
+            #     OrderItem.objects.create(
+            #         products_id = productid.get("products_id"),
+            #         quantity = quantity.get("quantity")
+            #     )
+            
+              # product = products.objects.filter()   
 
+            return JsonResponse({"msg": "Order Placed"}, status=200)
+        else:
+            return JsonResponse({"msg": "You are not Login"}, status=400)
+    else:
+        return JsonResponse({"msg": "method not allowed"}, status=405)
+    
 
 

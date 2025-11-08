@@ -66,11 +66,11 @@ class Order(models.Model):
     shippingAddress = models.TextField()
     
     
-# class OrderItem(models.Model):
-#     order = models.ForeignKey(Order, on_delete=models.CASCADE)
-#     product = models.ForeignKey(products, on_delete=models.CASCADE)
-#     quantity = models.IntegerField()
-#     price = models.IntegerField()
+class OrderItem(models.Model):
+    order = models.ForeignKey(Order, on_delete=models.CASCADE)
+    product = models.ForeignKey(products, on_delete=models.CASCADE)
+    quantity = models.IntegerField()
+    price = models.IntegerField()
     
     
       

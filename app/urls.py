@@ -13,6 +13,8 @@ from app.views import (
     productCategory,
     addtocart,
     removeFromCart,
+    filterproduct,
+    order,
 )
 
 
@@ -31,4 +33,6 @@ urlpatterns = [
     path("addproducts/", productCategory),
     path("addtocart/", addtocart),
     path("removefromcart/", removeFromCart),
+    path("filter/", filterproduct),
+    path('order/',order),
 ]

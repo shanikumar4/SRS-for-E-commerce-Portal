@@ -2,6 +2,7 @@ import re
 from django.http import JsonResponse
 from app.models import User, products, productImage
 from django.utils import timezone
+from django.forms.models import model_to_dict
 
 
 def validate_pass(password):
@@ -106,21 +107,31 @@ def convert_gender(gender):
 
 
 def validate(title):
-    if title is None or re.match("^\S+$", title) and len(title) >= 200:
+    if title is None or len(title) > 200:
         return False
     else:
         return True
 
 
 def validate_dis(dis):
-    if id is None or re.match("^\S+$", dis):
+    if dis is None:
         return False
     else:
         return True
 
 
-
-
+def validateprice(price):
+    if re.match("^[1-9]\d*$", price):
+        return True
+    else:
+        return False
+    
+def validateimage(img):
+    if re.match("[^\\s]+(\\.(?i)(jpe?g|png|gif|bmp))$", img):
+        return True
+    else:
+        return False
+    
 
 def updateUserDetails(firstName, lastName,  gender, phoneNo, profielimg, userid):
     flag = 0
@@ -166,3 +177,8 @@ def updateProductDetails(updateid, name,  description, price, stock, upcategory)
         return True
     else:
         return False
+    
+
+
+     
+    
