@@ -15,6 +15,8 @@ from app.views import (
     removeFromCart,
     filterproduct,
     order,
+    cartdata,
+    salesInsights,
 )
 
 
@@ -35,4 +37,6 @@ urlpatterns = [
     path("removefromcart/", removeFromCart),
     path("filter/", filterproduct),
     path('order/',order),
+    path('cartdata/',cartdata),
+    path('sales/', salesInsights),
 ]

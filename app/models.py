@@ -71,6 +71,14 @@ class OrderItem(models.Model):
     product = models.ForeignKey(products, on_delete=models.CASCADE)
     quantity = models.IntegerField()
     price = models.IntegerField()
+    name = models.CharField(max_length=200, default=None)
+    shippingAddress = models.TextField(default=None)
+    status = models.CharField(max_length=200, default=None)
     
     
-      
+
+class SalesInsights(models.Model):
+    productName = models.CharField(max_length=200)
+    totalSales = models.IntegerField()
+    revenue = models.ImageField()
+    numberOfOrders = models.IntegerField()      

@@ -4,7 +4,8 @@ from django.contrib.auth import authenticate, login, logout
 import re, json
 from .models import products, productImage, CartItem, Order, OrderItem
 from django.utils import timezone
-from django.db.models import Sum
+from django.db.models import Sum, Count
+
 # from PIL import Image
 from app.function import (
     validate_email,
@@ -34,7 +35,7 @@ def gender(request):
         return JsonResponse({"gender": data}, status=200)
 
     else:
-        return JsonResponse({"msg": "method not allowed"}, status=405)
+        return JsonResponse({"msg": "Method not allowed"}, status=405)
 
 
 def productCategory(request):
@@ -43,14 +44,14 @@ def productCategory(request):
         return JsonResponse({"flavour": data}, status=200)
 
     else:
-        return JsonResponse({"msg": "method not allowed"}, status=405)
+        return JsonResponse({"msg": "Method not allowed"}, status=405)
 
 
 def signupview(request):
     if request.method == "POST":
 
         if not request.body.strip():
-            return JsonResponse({"Error": "Enter The User Informations"}, status=400)
+            return JsonResponse({"Error": "Please provide user information to sign up."}, status=400)
 
         # data = json.loads(request.body)
 
@@ -62,7 +63,7 @@ def signupview(request):
         password = request.POST.get("password")
         conf_password = request.POST.get("Confirm_password")
         profileImg = request.FILES.get("image")
-     
+
         gendervalidate = validate_gender(gender)
 
         if (
@@ -76,44 +77,44 @@ def signupview(request):
         ):
             if User.objects.filter(email=email).exists():
                 return JsonResponse(
-                    {"msg": "User already registered, Please try again!"}, status=409
+                    {"msg": "An account with this email already exists."}, status=409
                 )
 
             if password != conf_password:
                 return JsonResponse(
-                    {"msg": "Password and confirm_password both must be same"},
+                    {"msg": "Password and confirm password both must be same"},
                     status=400,
                 )
 
             if not validate_phoneNo(phoneNo):
-                return JsonResponse({"msg": "Enter valid phone no"}, status=400)
+                return JsonResponse({"msg": "Please enter a valid phone number."}, status=400)
 
             if gendervalidate is None:
                 return JsonResponse(
-                    {"msg": "gender must be MALE or FEMALE or Other"}, status=400
+                    {"msg": "Invalid gender. Please select 'Male', 'Female', or 'Other'."}, status=400
                 )
 
             if not validate_pass(password):
                 return JsonResponse(
                     {
-                        "msg": "Password is mandtory and Password must contain atleast a Uppercase, a lowercase , a special charcter and a number and minimum length must be 6"
+                        "msg": "Password must be at least 6 characters long and include an uppercase letter, a lowercase letter, a number, and a special character."
                     },
                     status=400,
                 )
             if not validate_email(email):
                 return JsonResponse(
-                    {"msg": "Email is manadtory and Enter a valid Email"}, status=400
+                    {"msg": "A valid email address is required."}, status=400
                 )
             if not FirstName(first_name):
                 return JsonResponse(
                     {
-                        "msg": "First name is mandatory and First name must contain only alphabetical"
+                        "msg": "First name is required and must contain only letters."
                     },
                     status=400,
                 )
             if not LastName(last_name):
                 return JsonResponse(
-                    {"msg": "Last name must contain only alphabetical"}, status=400
+                    {"msg": "Last name must contain only letters."}, status=400
                 )
             else:
 
@@ -129,30 +130,30 @@ def signupview(request):
                 user.set_password(password)
                 user.save()
 
-                return JsonResponse({"msg": "User Registerd Successfully"}, status=201)
+                return JsonResponse({"msg": "User registered successfully."}, status=201)
 
         else:
-            return JsonResponse({"msg": "Enter all required field"}, status=400)
+            return JsonResponse({"msg": "Please fill in all required fields."}, status=400)
     else:
 
-        return JsonResponse({"msg": "method not allowed"}, status=405)
+        return JsonResponse({"msg": "Method not allowed"}, status=405)
 
 
 def loginview(request):
     if request.method == "POST":
         if not request.body.strip():
-            return JsonResponse({"msg": "Enter The email and password"}, status=400)
+            return JsonResponse({"msg": "Please provide an email and password."}, status=400)
 
         data = json.loads(request.body)
         email = data.get("email")
-        password = data.get("password") 
-        
+        password = data.get("password")
+
         if request.user.is_authenticated:
-            return JsonResponse({"msg": "User already logged in "}, status=200)
+            return JsonResponse({"msg": "You are already logged in. "}, status=200)
 
         if not email or not password:
             return JsonResponse(
-                {"msg": "email and password both mandatory"}, status=400
+                {"msg": "Email and password are required."}, status=400
             )
 
         user = authenticate(request=request, email=email, password=password)
@@ -166,11 +167,11 @@ def loginview(request):
                 userType = "admin"
 
             return JsonResponse(
-                {"msg": "User logged in successfully", "user": userType}, status=200
+                {"msg": "You are now logged in.", "user": userType}, status=200
             )
 
         else:
-            return JsonResponse({"msg": "User or Password is incorrect"}, status=401)
+            return JsonResponse({"msg": "Invalid email or password."}, status=401)
 
     else:
         return JsonResponse({"msg": "Method not allowed"}, status=405)
@@ -179,7 +180,7 @@ def loginview(request):
 def updateUser(request):
     if request.method == "POST":
         if not request.body.strip():
-            return JsonResponse({"msg": "Enter The User Informations"}, status=400)
+            return JsonResponse({"msg": "Please provide the information you wish to update."}, status=400)
 
         # data = json.loads(request.body)
 
@@ -193,7 +194,7 @@ def updateUser(request):
         profileImg = request.FILES.get("profileImage")
 
         if not User.objects.filter(id=userid).exists():
-            return JsonResponse({"msg": "id not found"}, status=400)
+            return JsonResponse({"msg": "User not found."}, status=404)
 
         if currentUser.is_authenticated:
 
@@ -206,16 +207,16 @@ def updateUser(request):
                 userid,
             ):
                 return JsonResponse(
-                    {"msg": "user details Updated successfully"}, status=200
+                    {"msg": "Your profile has been updated successfully."}, status=200
                 )
             else:
-                return JsonResponse({"msg": "details not field"}, status=400)
+                return JsonResponse({"msg": "No valid details were provided for an update."}, status=400)
 
         else:
-            return JsonResponse({"msg": "You are not Login"}, status=400)
+            return JsonResponse({"msg": "You must be logged in to update your profile."}, status=401)
 
     else:
-        return JsonResponse({"msg": "method not allowed"}, status=405)
+        return JsonResponse({"msg": "Method not allowed"}, status=405)
 
 
 def logoutview(request):
@@ -223,9 +224,9 @@ def logoutview(request):
         if request.user.is_authenticated:
 
             logout(request)
-            return JsonResponse({"msg": "you are successfully logout"}, status=200)
+            return JsonResponse({"msg": "You have been logged out successfully."}, status=200)
         else:
-            return JsonResponse({"msg": "User is not login"}, status=400)
+            return JsonResponse({"msg": "You are not logged in."}, status=400)
     else:
         return JsonResponse({"msg": "Method not allowed"}, status=405)
 
@@ -255,7 +256,7 @@ def userdetails(request):
 
             return JsonResponse(data, status=200)
         else:
-            return JsonResponse({"msg": "user not login"}, status=400)
+            return JsonResponse({"msg": "You must be logged in to view your details."}, status=401)
     else:
         return JsonResponse({"msg": "Method not allowed"}, status=405)
 
@@ -267,9 +268,8 @@ def addproduct(request):
         admin = current_user.is_superuser
 
         if not admin:
-            return JsonResponse({"msg": "only admin have access"}, status=400)
-        
-        
+            return JsonResponse({"msg": "You do not have permission to perform this action."}, status=400)
+
         name = request.POST.get("name")
         description = request.POST.get("description")
         price = request.POST.get("price")
@@ -277,31 +277,23 @@ def addproduct(request):
         category = request.POST.get("category")
 
         images = request.FILES.getlist("image")
-        
-        # for img in images:
-        #      Image.open(img.file)
-        #      Image.verify()
-             
-        #      return JsonResponse({"msg": "invalid image"}, status=400)
-                
-        
-        
-        
-        categoryItem =  ['Amber','Floral', 'Fresh', 'Woody']
-        
+
+        if "image" in request.FILES["image"].content_type != " image/jpeg":
+            return JsonResponse({"msg": "Invalid image format. Only JPEG images are allowed."}, status=400)
+
+        categoryItem = ["Amber", "Floral", "Fresh", "Wooy"]
+
         if not category in categoryItem:
-             return JsonResponse({"msg": "invalid category"}, status=400)
+            return JsonResponse({"msg": "Invalid category. Please select from 'Amber', 'Floral', 'Fresh', or 'Woody'."}, status=400)
         if not validateprice(price):
-            return JsonResponse({"msg": "invalid price"}, status=400)
+            return JsonResponse({"msg": "Invalid price. Please enter a valid number."}, status=400)
         if not validateprice(stock):
-            return JsonResponse({"msg": "invalid stock"}, status=400)
+            return JsonResponse({"msg": "Invalid stock. Please enter a valid number."}, status=400)
         if not validate(name):
-            return JsonResponse({"msg": "invalid name"}, status=400)
+            return JsonResponse({"msg": "A valid product name is required."}, status=400)
         if not validate_dis(description):
-            return JsonResponse({"msg": "invalid description"}, status=400)
-            
-        
-        
+            return JsonResponse({"msg": "A valid product description is required."}, status=400)
+
         if request.user.is_authenticated:
             if name and description:
                 product = products(
@@ -316,79 +308,82 @@ def addproduct(request):
                 for image in images:
                     productImage.objects.create(products=product, image=image)
 
-                return JsonResponse({"msg": "product added successfully"}, status=201)
+                return JsonResponse({"msg": "Product added successfully."}, status=201)
             else:
                 return JsonResponse(
-                    {"msg": "Enter name ,description, price , stock"}, status=400
+                    {"msg": "Please provide all required product details (name, description, price, stock)."}, status=400
                 )
         else:
-            return JsonResponse({"msg": "user is not loged in"}, status=401)
+            return JsonResponse({"msg": "You must be logged in to perform this action."}, status=401)
 
     else:
-        return JsonResponse({"msg": "method not allowed"}, status=405)
+        return JsonResponse({"msg": "Method not allowed."}, status=405)
 
 
 def updateProduct(request):
     if request.method == "POST":
-        
+
         if not request.body.strip():
-            return JsonResponse({"msg": "Enter The User Informations"}, status=400)
+            return JsonResponse({"msg": "Please provide the product details you wish to update."}, status=400)
 
         name = request.POST.get("name")
         description = request.POST.get("description")
         price = request.POST.get("price")
-        stock = request.POST.get("stock")   
+        stock = request.POST.get("stock")
         images = request.FILES.get("image")
         updateid = request.POST.get("id")
         productImgId = request.POST.get("productImgId")
         category = request.POST.get("category")
 
-       
-        categoryItem =  ['Amber','Floral', 'Fresh', 'Woody']
-        
+        categoryItem = ["Amber", "Floral", "Fresh", "Woody"]
+
         if not category in categoryItem:
-             return JsonResponse({"msg": "invalid category"}, status=400)
+            return JsonResponse({"msg": "Invalid category. Please select from 'Amber', 'Floral', 'Fresh', or 'Woody'."}, status=400)
         if not validateprice(price):
-            return JsonResponse({"msg": "invalid price"}, status=400)
+            return JsonResponse({"msg": "Invalid price. Please enter a valid number."}, status=400)
         if not validateprice(stock):
-            return JsonResponse({"msg": "invalid stock"}, status=400)
+            return JsonResponse({"msg": "Invalid stock. Please enter a valid number."}, status=400)
         if not validate(name):
-            return JsonResponse({"msg": "invalid name"}, status=400)
+            return JsonResponse({"msg": "A valid product name is required."}, status=400)
         if not validate_dis(description):
-            return JsonResponse({"msg": "invalid description"}, status=400)
-            
+            return JsonResponse({"msg": "A valid product description is required."}, status=400)
+
         if validate_id(updateid):
-            return JsonResponse({"msg": "id required"}, status=400)
+            return JsonResponse({"msg": "A product ID is required to update."}, status=400)
 
         if not products.objects.filter(id=updateid).exists():
-            return JsonResponse({"msg": "id not found"}, status=400)
+            return JsonResponse({"msg": "No product found with this ID."}, status=404)
 
         current_user = request.user
         admin = current_user.is_superuser
 
         if not admin:
-            return JsonResponse({"msg": "only admin have access"}, status=400)
+            return JsonResponse({"msg": "You do not have permission to perform this action."}, status=403)
 
         if current_user.is_authenticated:
 
-            if updateProductDetails(updateid, name, description, price, stock, category):
+            if updateProductDetails(
+                updateid, name, description, price, stock, category
+            ):
                 if productImgId:
-                    img = productImage.objects.get(products_id=updateid, id=productImgId)
+                    img = productImage.objects.get(
+                        products_id=updateid, id=productImgId
+                    )
                     img.image = images
                     img.save()
 
                 return JsonResponse(
-                    {"msg": "Products details update successfully"}, status=200
+                    {"msg": "Product details updated successfully."}, status=200
                 )
 
             else:
-                return JsonResponse({"msg": "product was not found"}, status=400)
+                return JsonResponse({"msg": "Could not update product. No valid details provided."}, status=400)
 
         else:
-            return JsonResponse({"msg": "You are not Login"}, status=400)
+            return JsonResponse({"msg": "You must be logged in to perform this action."}, status=401)
 
     else:
-        return JsonResponse({"msg": "method not allowed"}, status=405)
+        return JsonResponse({"msg": "Method not allowed."}, status=405)
 
 
 def deleteProduct(request):
@@ -400,43 +395,79 @@ def deleteProduct(request):
         admin = current_user.is_superuser
 
         if not admin:
-            return JsonResponse({"msg": "only admin have access"}, status=400)
+            return JsonResponse({"msg": "You do not have permission to perform this action."}, status=403)
 
         if current_user.is_authenticated:
 
             if not delid:
-                return JsonResponse({"msg": "id required"}, status=400)
+                return JsonResponse({"msg": "A product ID is required to delete."}, status=400)
 
             if products.objects.filter(id=delid, active=True):
 
                 products.objects.filter(id=delid).update(
                     active=False, deleteAt=timezone.now()
                 )
-                return JsonResponse({"msg": "product deleted successfully"})
+                return JsonResponse({"msg": "Product has been deleted successfully."}, status = 200)
 
             else:
-                return JsonResponse({"msg": "invalid delid"}, status=400)
+                return JsonResponse({"msg": "No active product found with this ID."}, status=404)
         else:
-            return JsonResponse({"msg": "You are not Login"}, status=400)
+            return JsonResponse({"msg": "You must be logged in to perform this action."}, status=401)
 
     else:
-        return JsonResponse({"msg": "method not allowed"}, status=405)
+        return JsonResponse({"msg": "Method not allowed"}, status=405)
 
 
 def productDetails(request):
-    
-    
+
     if request.method == "GET":
         user = request.user
-        
-        # if  user.is_superuser==0: 
-        #     return JsonResponse({"msg": "only admin can access"}, status=400) 
-        
+
+        allProduct = products.objects.filter(active=True)
+
+        data = []
+
+        columns = [
+            "name",
+            "description",
+            "price",
+            "stock",
+            "category",
+            "id",
+        ]
+
+        for product in allProduct:
+            productdata = model_to_dict(product, fields=columns)
+
+            allproductimg = productImage.objects.filter(products_id=product.id)
+
+            imgurl = [img.image.url for img in allproductimg if img.image]
+            productdata["imgurl"] = imgurl
+            data.append(productdata)
+
+        return JsonResponse(data, safe=False, status=200)
+    else:
+        return JsonResponse({"msg": "Method not allowed."}, status=405)
+
+
+def filterproduct(request):
+    if request.method == "GET":
+        user = request.user
+        filterby = request.GET.get("input", default="all")
+
+        if filterby is None:
+
+            return JsonResponse({"msg": "Please provide a filter category."}, status=400)
+
         if user.is_authenticated:
+            category = ["Amber", "Floral", "Fresh", "Woody"]
+            if filterby in category:
+                allProduct = products.objects.filter(active=True, category=filterby)
+            if re.match("^[0-9]*$", filterby):
+                allProduct = products.objects.filter(active=True, price=filterby)
 
-            # imgUrl = user.profileImage.url
-
-            allProduct = products.objects.filter(active=True)
+            if filterby == "all":
+                allProduct = products.objects.filter(active=True)
 
             data = []
 
@@ -448,7 +479,6 @@ def productDetails(request):
                 "category",
                 "id",
             ]
-
             for product in allProduct:
                 productdata = model_to_dict(product, fields=columns)
 
@@ -460,233 +490,244 @@ def productDetails(request):
 
             return JsonResponse(data, safe=False, status=200)
         else:
-            return JsonResponse({"msg": "user not login"}, status=400)
+            return JsonResponse({"msg": "You must be logged in to view products."}, status=401)
     else:
-        return JsonResponse({"msg": "Method not allowed"}, status=405)
-    
-
-
-def filterproduct(request):
-     if request.method == "GET":
-        user = request.user
-        filterby = request.GET.get("input", default = "all")
-        
-        if filterby is None:
-             
-            return JsonResponse({"msg": "enter category or price"}, status=400)
-        
-        
-        if user.is_authenticated:
-            category = ['Amber','Floral', 'Fresh', 'Woody']
-            if filterby in category:
-                allProduct = products.objects.filter(active=True, category = filterby)
-            if re.match("^[0-9]*$", filterby):
-                allProduct = products.objects.filter(active=True, price = filterby)
-                
-            if filterby == "all":
-                allProduct = products.objects.filter(active=True)
-                
-            
-            
-            data = []
-
-            columns = [
-                        "name",
-                        "description",
-                        "price",
-                        "stock",
-                        "category",
-                        "id",
-                    ]
-            for product in allProduct:
-                        productdata = model_to_dict(product, fields=columns)
-
-                        allproductimg = productImage.objects.filter(products_id=product.id)
-
-                        imgurl = [img.image.url for img in allproductimg if img.image]
-                        productdata["imgurl"] = imgurl
-                        data.append(productdata)
-
-            return JsonResponse(data, safe=False, status=200)    
-        else:
-            return JsonResponse({"msg": "user not login"}, status=400)
-     else:
-        return JsonResponse({"msg": "Method not allowed"}, status=405)
-    
-
+        return JsonResponse({"msg": "Method not allowed."}, status=405)
 
 
 def addtocart(request):
     if request.method == "POST":
         if not request.body.strip():
-            return JsonResponse({"msg": "body can't be null"}, status= 400)
-       
+            return JsonResponse({"msg": "Please provide a product ID and quantity."}, status=400)
+
         user = request.user
-            
-        # data = json.loads(request.body) 
-        productid = request.POST.get('productid')
-        quantity = request.POST.get('quantity')
-        
-        if products.objects.filter(id=productid, active = False):
-            return JsonResponse({"msg": "invalid product id"}, status = 400)
-        
-        product = products.objects.filter(id = productid).values("stock")
-        if quantity is None or quantity=="0" or quantity==0:
-         quantity =1 
-        
-        if user.is_authenticated:    
+
+        # data = json.loads(request.body)
+        productid = request.POST.get("productid")
+        quantity = request.POST.get("quantity")
+
+        if products.objects.filter(id=productid, active=False):
+            return JsonResponse({"msg": "This product does not exist or is no longer available."}, status=404)
+
+        product = products.objects.filter(id=productid).values("stock")
+        if quantity is None or quantity == "0" or quantity == 0:
+            quantity = 1
+
+        if user.is_authenticated:
             stock = product[0].get("stock")
             stock = int(stock)
-            quantity=int(quantity)
+            quantity = int(quantity)
             print(stock)
-            if quantity>stock:
-              return JsonResponse({"msg": "product unavaliabe"}, status = 400)
-            newstock = int(stock)-int(quantity)
+            if quantity > stock:
+                return JsonResponse({"msg": "The requested quantity is not available in stock."}, status=400)
+            newstock = int(stock) - int(quantity)
             print(newstock)
-            
-                
-            
-            
+
             if productid is None:
-                return JsonResponse({"msg": "product id required"}, status=400)
-                
-       
-      
-            
+                return JsonResponse({"msg": "A product ID is required to add to cart."}, status=400)
+
             if productid:
                 item = CartItem.objects.create(
-                    user_id = user.id,
-                    products_id = productid,
-                    quantity = quantity
+                    user_id=user.id, products_id=productid, quantity=quantity
                 )
-                
-                products.objects.filter(id=productid).update(stock=newstock, updateAt = timezone.now())
-                
-                allProduct = CartItem.objects.filter(user_id = user.id)
-                      
-                data = []
 
-                columns = [
-                    "quantity"
-                ]
-                
-                
-                
-                
+                products.objects.filter(id=productid).update(
+                    stock=newstock, updateAt=timezone.now()
+                )
 
-                for product in allProduct:
-                    productdata = model_to_dict(product, fields=columns)
+                return JsonResponse({"msg": "Product added to your cart."}, status=201)
 
-                    # allproductimg = productImage.objects.filter(products_id=product.id)
-
-                    # imgurl = [img.image.url for img in allproductimg if img.image]
-                    # productdata["imgurl"] = imgurl
-                    data.append(productdata)
-                    
-                    
-                newid = allProduct.get("products_id")
-                
-                print(newid)                    
-                    
-                
-
-                return JsonResponse(data,safe=False, status=200)
-                
-                # return JsonResponse(, status=201)
-            
             else:
-                return JsonResponse({"msg": "enter product id"}, status=201)
-        
+                return JsonResponse({"msg": "A product ID is required."}, status=400)
+
         else:
-             return JsonResponse({"msg": "authentication required"}, status=401)
-                       
+            return JsonResponse({"msg": "You must be logged in to add items to your cart."}, status=401)
+
     else:
-         return JsonResponse({"msg": "Method Not Allowed"}, status=405)   
-    
-    
+        return JsonResponse({"msg": "Method Not Allowed."}, status=405)
+
+
+def cartdata(request):
+    if request.method == "GET":
+
+        user = request.user
+
+        if user.is_authenticated:
+            cartitems = (
+                CartItem.objects.filter(user_id=user.id)
+                .select_related("products")
+                .prefetch_related("products__productimage_set")
+            )
+            data = []
+
+            for items in cartitems:
+                product = items.products
+
+                productdata = model_to_dict(product, fields=["id", "name", "price"])
+
+                allproductimg = product.productimage_set.all()
+
+                imgurl = [img.image.url for img in allproductimg if img.image]
+
+                itemdata = {
+                    "cartiteid": items.id,
+                    "quantity": items.quantity,
+                    "product": productdata,
+                    "images": imgurl,
+                }
+
+                data.append(itemdata)
+
+            return JsonResponse(data, safe=False, status=200)
+
+        else:
+            return JsonResponse({"msg": "You must be logged in to view your cart."}, status=401)
+    else:
+        return JsonResponse({"msg": "Method Not Allowed."}, status=405)
+
+
 def removeFromCart(request):
     if request.method == "DELETE":
 
         productid = request.GET.get("id")
+        if not productid:
+            return JsonResponse({"msg": "A product ID is required to remove from cart."}, status=404)
 
         current_user = request.user
-        
+
         userid = current_user.id
 
         if current_user.is_authenticated:
-            product = products.objects.filter(id = productid).values("stock")
+            product = products.objects.filter(id=productid).values("stock")
+
+            if not product:
+                return JsonResponse({"msg": "No product found with this ID."}, status=404)
             stock = product[0].get("stock")
 
-            if not productid:
-                return JsonResponse({"msg": "id required"}, status=400)
+            if CartItem.objects.filter(products_id=productid, user_id=userid):
+                addstock = CartItem.objects.filter(
+                    products_id=productid, user_id=userid
+                ).aggregate(sum=Sum("quantity", default=0))
 
-            if CartItem.objects.filter(products_id = productid, user_id= userid):
-                addstock = CartItem.objects.filter(products_id = productid, user_id= userid).aggregate(sum = Sum('quantity', default = 0))
-                
-                newstock = stock+ addstock.get('sum')
-            
-                CartItem.objects.filter(products_id = productid, user_id= userid).delete()
+                newstock = stock + addstock.get("sum")
 
-                products.objects.filter(id=productid).update(stock=newstock, updateAt = timezone.now())
-                
-                
-                
-                return JsonResponse({"msg": "product removed from cart"})
+                CartItem.objects.filter(products_id=productid, user_id=userid).delete()
+
+                products.objects.filter(id=productid).update(
+                    stock=newstock, updateAt=timezone.now()
+                )
+
+                return JsonResponse({"msg": "Product removed from your cart."}, status = 200)
 
             else:
-                return JsonResponse({"msg": "invalid product id"}, status=400)
+                return JsonResponse({"msg": "This product is not in your cart."}, status=404)
         else:
-            return JsonResponse({"msg": "You are not Login"}, status=400)
+            return JsonResponse({"msg": "You must be logged in to modify your cart."}, status=401)
 
     else:
-        return JsonResponse({"msg": "method not allowed"}, status=405)
-    
-    
-    
+        return JsonResponse({"msg": "Method not allowed."}, status=405)
+
 
 def order(request):
-    if request.method == 'POST':
-        
+    if request.method == "POST":
+
         totalprice = request.POST.get("totalPrice")
         address = request.POST.get("address")
-        user= request.user
+        user = request.user
         userid = user.id
-        
-        
+
         if not totalprice:
-            return JsonResponse({"msg": "Total price required"}, status=400)
+            return JsonResponse({"msg": "Total price is required to place an order."}, status=400)
         if not address:
-            return JsonResponse({"msg": "Address required"}, status=400)
-        
-        
-        
+            return JsonResponse({"msg": "A shipping address is required to place an order."}, status=400)
+
         if user.is_authenticated:
-            
-            Order.objects.create(
-                totalPrice = totalprice,
-                shippingAddress = address,
-                user_id = userid
+
+            cartitem = CartItem.objects.filter(user_id=user.id).select_related(
+                "products"
             )
-            
-            productid = CartItem.objects.filter(user_id = userid).values("products_id")
-            quantity = CartItem.objects.filter(user_id = userid).values("quantity")
-            
-            print(productid)
-            
-            
-            # for i in productid:
-            #     OrderItem.objects.create(
-            #         products_id = productid.get("products_id"),
-            #         quantity = quantity.get("quantity")
-            #     )
-            
-              # product = products.objects.filter()   
 
-            return JsonResponse({"msg": "Order Placed"}, status=200)
+            if not cartitem:
+                return JsonResponse({"msg": "Your cart is empty. Please add items before placing an order."}, status=400)
+
+            new_order = Order.objects.create(
+                totalPrice=totalprice, shippingAddress=address, user_id=userid
+            )
+
+            cartitem = CartItem.objects.filter(user_id=user.id).select_related(
+                "products"
+            )
+
+            data = []
+
+            for item in cartitem:
+                data.append(
+                    OrderItem(
+                        order=new_order,
+                        product=item.products,
+                        quantity=item.quantity,
+                        price=item.products.price,
+                        name=item.products.name,
+                        shippingAddress=new_order.shippingAddress,
+                        status="Confirmed",
+                    )
+                )
+
+            OrderItem.objects.bulk_create(data)
+
+            CartItem.objects.filter(user_id=userid).delete()
+
+            orederitem = OrderItem.objects.filter(order_id=new_order)
+
+            orderdetails = []
+
+            columns = [
+                "name",
+                "quantity",
+                "price",
+                "shippingAddress",
+                "status",
+            ]
+
+            for item in orederitem:
+                productdata = model_to_dict(item, fields=columns)
+                orderdetails.append(productdata)
+
+            return JsonResponse(orderdetails, safe=False, status=200)
+
+            # return JsonResponse({"msg": "Order Placed"}, status=200)
         else:
-            return JsonResponse({"msg": "You are not Login"}, status=400)
+            return JsonResponse({"msg": "You must be logged in to place an order."}, status=401)
     else:
-        return JsonResponse({"msg": "method not allowed"}, status=405)
-    
+        return JsonResponse({"msg": "Method not allowed."}, status=405)
 
 
+def salesInsights(request):
+    if request.method == "GET":
+
+        productid = request.GET.get("id")
+
+        if not productid:
+            return JsonResponse({"msg": "A product ID is required to view insights."}, status=400)
+
+        user = request.user
+
+        if user.is_authenticated:
+
+            product = products.objects.filter(id=productid)
+
+            revenue = OrderItem.objects.filter(product_id=productid).aggregate(
+                Sum("price")
+            )
+
+            totalsales = OrderItem.objects.filter(product_id=productid).aggregate(
+                Sum("quantity")
+            )
+
+            numberOfOrders = OrderItem.objects.filter(product_id=productid).aggregate(
+                Count("product_id")
+            )
+
+            print(revenue)
+            print(totalsales)
+            print(numberOfOrders)
