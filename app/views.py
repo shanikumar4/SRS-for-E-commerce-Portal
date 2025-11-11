@@ -1,12 +1,26 @@
 from django.shortcuts import render, redirect
-from django.http import JsonResponse
+from django.http import JsonResponse, FileResponse
 from django.contrib.auth import authenticate, login, logout
 import re, json
-from .models import products, productImage, CartItem, Order, OrderItem, Gender, Category
+from .models import (
+    products,
+    productImage,
+    CartItem,
+    Order,
+    OrderItem,
+    Gender,
+    Category,
+    SalesInsights,
+    PaymentMethod,
+)
 from django.utils import timezone
 from django.db.models import Sum, Count
-
-# from PIL import Image
+from app.models import User
+from django.forms.models import model_to_dict
+from django import forms
+import pandas as pd
+import csv, io, xlsxwriter
+from io import BytesIO
 from app.function import (
     validate_email,
     validate_pass,
@@ -24,9 +38,6 @@ from app.function import (
     validateprice,
     validateimage,
 )
-from app.models import User
-from django.forms.models import model_to_dict
-from django import forms
 
 
 def gender(request):
@@ -46,6 +57,48 @@ def productCategory(request):
         category = Category.objects.all()
         data = [c.category for c in category]
         return JsonResponse({"category": data}, status=200)
+
+    else:
+        return JsonResponse({"msg": "Method not allowed"}, status=405)
+    
+
+def addcategory(request):
+    if request.method != "POST":
+         return JsonResponse({"msg": "Method not allowed."}, status=405)
+     
+    newcategory = request.POST.get("category")
+
+    user = request.user
+    
+    if not newcategory: 
+      return JsonResponse(
+            {"msg": "Please provide a Category which you want to add."}, status=400
+        )
+
+    
+    if not user.is_authenticated:
+        return JsonResponse(
+            {"msg": "You must be logged in to perform this action."}, status=401
+        )
+    
+    if not user.is_superuser:
+        return JsonResponse(
+            {"msg": "You dont't have accese to add category."}, status=401
+        )
+        
+        
+    Category.objects.create(category = newcategory)    
+    return JsonResponse(
+            {"msg": "New Categroy added."}, status=200
+        )
+    
+
+
+def payemntmethod(request):
+    if request.method == "GET":
+        payment = Category.objects.all()
+        data = [p.payment for p in payment]
+        return JsonResponse({"paymethod": data}, status=200)
 
     else:
         return JsonResponse({"msg": "Method not allowed"}, status=405)
@@ -214,8 +267,7 @@ def updateUser(request):
         gendername = request.POST.get("gender")
         profileImg = request.FILES.get("profileImage")
 
-        isValidGender=  Gender.objects.filter(gender=gendername) 
-          
+        isValidGender = Gender.objects.filter(gender=gendername)
 
         if not isValidGender:
             return JsonResponse(
@@ -234,16 +286,13 @@ def updateUser(request):
 
         if currentUser.is_authenticated:
             isgender = Gender.objects.get(gender=gendername)
-            
+
             if isgender:
-                updategender = User.objects.get(id = userid)
-                
+                updategender = User.objects.get(id=userid)
+
                 updategender.gender = isgender
-                
+
                 updategender.save()
-                
-                
-                
 
             if updateUserDetails(
                 first_name,
@@ -283,7 +332,7 @@ def logoutview(request):
         return JsonResponse({"msg": "Method not allowed"}, status=405)
 
 
-def userdetails(request):  
+def userdetails(request):
     user = request.user
     if request.method == "GET":
 
@@ -300,16 +349,16 @@ def userdetails(request):
             ]
 
             data = model_to_dict(user, fields=columns)
-            
-            g = User.objects.filter(id = user.id).values("gender_id")
-            
+
+            g = User.objects.filter(id=user.id).values("gender_id")
+
             # gender = Gender.objects.get(id = genderid[0].gender_id)
-            
-            genderid= g[0].get("gender_id")
-            
-            gender = Gender.objects.get(id = genderid)            
+
+            genderid = g[0].get("gender_id")
+
+            gender = Gender.objects.get(id=genderid)
             data["gender"] = gender.gender
-            
+
             if user.profileImage:
                 data["image_url"] = user.profileImage.url
             else:
@@ -423,31 +472,24 @@ def updateProduct(request):
         description = request.POST.get("description")
         price = request.POST.get("price")
         stock = request.POST.get("stock")
-        images = request.FILES.get("image")
+        image = request.FILES.get("image")
         updateid = request.POST.get("id")
         productImgId = request.POST.get("productImgId")
         categoryname = request.POST.get("category")
 
         # categoryItem = ["Amber", "Floral", "Fresh", "Woody"]\\
-            
-            
-        if   images:
-            for image in images:
-                if image.content_type != "image/jpeg":
-                    return JsonResponse(
-                        {"msg": " Only JPEG images are allowed."},
-                        status=400,
-                    )
 
-        
-        if not Category.objects.filter(category= categoryname).exists():
+        if image.content_type != "image/jpeg" and image.content_type != "image/png":
+            return JsonResponse(
+                {"msg": " Only JPEG and png images are allowed."},
+                status=400,
+            )
+
+        if not Category.objects.filter(category=categoryname).exists():
             return JsonResponse(
                 {"msg": "Invalid Category. Please enter a valid Category."}, status=400
             )
-            
-        
 
-       
         if not validateprice(price):
             return JsonResponse(
                 {"msg": "Invalid price. Please enter a valid number."}, status=400
@@ -483,34 +525,27 @@ def updateProduct(request):
             )
 
         if current_user.is_authenticated:
-            
-            
-            
-            
-            
+
             iscategory = Category.objects.get(category=categoryname)
             if not iscategory:
-             return JsonResponse(
-                {
-                    "msg": "Invalid category. Please select from 'Amber', 'Floral', 'Fresh', or 'Woody'."
-                },
-                status=400,
-             )
-            
+                return JsonResponse(
+                    {
+                        "msg": "Invalid category. Please select from 'Amber', 'Floral', 'Fresh', or 'Woody'."
+                    },
+                    status=400,
+                )
+
             else:
-                updatecategory = products.objects.get(id = updateid)
+                updatecategory = products.objects.get(id=updateid)
                 updatecategory.category = iscategory
                 updatecategory.save()
-            
 
-            if updateProductDetails(
-                updateid, name, description, price, stock
-            ):
+            if updateProductDetails(updateid, name, description, price, stock):
                 if productImgId:
                     img = productImage.objects.get(
                         products_id=updateid, id=productImgId
                     )
-                    img.image = images
+                    img.image = image
                     img.save()
 
                 return JsonResponse(
@@ -593,11 +628,10 @@ def productDetails(request):
         ]
 
         for product in allProduct:
-            
-            
+
             categoryid = product.category_id
-            
-            categorydata = Category.objects.filter(id = categoryid).values("category")
+
+            categorydata = Category.objects.filter(id=categoryid).values("category")
             print(categorydata)
             productdata = model_to_dict(product, fields=columns)
             productdata["category"] = categorydata[0].get("category")
@@ -618,43 +652,39 @@ def filterproduct(request):
         filterby = request.GET.get("input", default=None)
 
         print(filterby)
-        
-        
+
         if filterby is None or filterby == "":
-                allProduct = products.objects.filter(active=True)
+            allProduct = products.objects.filter(active=True)
 
         else:
-            categoryitem = Category.objects.filter(category=filterby).values('id')
-            
+            categoryitem = Category.objects.filter(category=filterby).values("id")
+
             if not categoryitem:
                 return JsonResponse({"error": "Invalid category input."}, status=400)
-            category = categoryitem[0].get('id')
+            category = categoryitem[0].get("id")
             allProduct = products.objects.filter(active=True, category=category)
-        
 
-
-        
         data = []
 
         columns = [
-                "name",
-                "description",
-                "price",
-                "stock",
-                "category",
-                "id",
-            ]
+            "name",
+            "description",
+            "price",
+            "stock",
+            "category",
+            "id",
+        ]
         for product in allProduct:
-                productdata = model_to_dict(product, fields=columns)
+            productdata = model_to_dict(product, fields=columns)
 
-                allproductimg = productImage.objects.filter(products_id=product.id)
+            allproductimg = productImage.objects.filter(products_id=product.id)
 
-                imgurl = [img.image.url for img in allproductimg if img.image]
-                productdata["imgurl"] = imgurl
-                data.append(productdata)
+            imgurl = [img.image.url for img in allproductimg if img.image]
+            productdata["imgurl"] = imgurl
+            data.append(productdata)
 
         return JsonResponse(data, safe=False, status=200)
-        
+
     else:
         return JsonResponse({"msg": "Method not allowed."}, status=405)
 
@@ -820,17 +850,54 @@ def order(request):
     if request.method == "POST":
 
         totalprice = request.POST.get("totalPrice")
-        address = request.POST.get("address")
+        state = request.POST.get("state")
+        district = request.POST.get("dist")
+        houseNo = request.POST.get("house")
+        pincode = request.POST.get("pin")
+        phoneNo = request.POST.get("phone")
         user = request.user
         userid = user.id
+        method = request.POST.get("method")
+        
+        if not PaymentMethod.objects.filter(Method=method).exists():
+             return JsonResponse(
+                {"msg": "Please Select a Valid payment method."}, status=400
+            )
 
         if not totalprice:
             return JsonResponse(
                 {"msg": "Total price is required to place an order."}, status=400
             )
-        if not address:
+        if not state:
             return JsonResponse(
-                {"msg": "A shipping address is required to place an order."}, status=400
+                {"msg": "State is required to place an order."}, status=400
+            )
+        if not district:
+            return JsonResponse(
+                {"msg": "District is required to place an order."}, status=400
+            )
+
+        if not houseNo:
+            return JsonResponse(
+                {"msg": "House number is required to place an order."}, status=400
+            )
+
+        if not pincode:
+            return JsonResponse(
+                {"msg": "Pincode is required to place an order."}, status=400
+            )
+
+        if not phoneNo:
+            return JsonResponse(
+                {"msg": "Phone is required to place an order."}, status=400
+            )
+
+        methods = PaymentMethod.objects.get(Method=method)
+
+        if not methods:
+            return JsonResponse(
+                {"msg": "Invalid payment method."},
+                status=400,
             )
 
         if user.is_authenticated:
@@ -848,12 +915,21 @@ def order(request):
                 )
 
             new_order = Order.objects.create(
-                totalPrice=totalprice, shippingAddress=address, user_id=userid
+                totalPrice=totalprice, 
+                state = state,
+                district = district,
+                houseNo = houseNo,
+                pincode = pincode,
+                phoneNo = phoneNo,
+                user_id=userid,
+                paymentmethod= methods
             )
 
             cartitem = CartItem.objects.filter(user_id=user.id).select_related(
                 "products"
             )
+            
+            # method = Order.objects.filter(id = new_order).select_related("paymentmethod")
 
             data = []
 
@@ -865,8 +941,8 @@ def order(request):
                         quantity=item.quantity,
                         price=item.products.price,
                         name=item.products.name,
-                        shippingAddress=new_order.shippingAddress,
                         status="Confirmed",
+                        
                     )
                 )
 
@@ -874,31 +950,77 @@ def order(request):
 
             CartItem.objects.filter(user_id=userid).delete()
 
-            orederitem = OrderItem.objects.filter(order_id=new_order)
-
-            orderdetails = []
-
-            columns = [
-                "name",
-                "quantity",
-                "price",
-                "shippingAddress",
-                "status",
-            ]
-
-            for item in orederitem:
-                productdata = model_to_dict(item, fields=columns)
-                orderdetails.append(productdata)
-
-            return JsonResponse(orderdetails, safe=False, status=200)
-
-            # return JsonResponse({"msg": "Order Placed"}, status=200)
+            return JsonResponse({"msg": "Order Placed"}, status=200)
         else:
             return JsonResponse(
                 {"msg": "You must be logged in to place an order."}, status=401
             )
     else:
         return JsonResponse({"msg": "Method not allowed."}, status=405)
+
+
+def orderdetails(request):
+    if request.method != "GET":
+       
+        return JsonResponse({"msg": "Method not allowed."}, status=405)
+    user = request.user
+
+    orderid = request.GET.get("id")
+    
+    if not orderid:
+        return JsonResponse({"msg": "Order id required."}, status=400)
+    if not validate_id(orderid):
+        return JsonResponse({"msg": "invalid order id."}, status=400)
+    
+  
+    
+    
+   
+
+    if not user.is_authenticated:
+        return JsonResponse(
+            {"msg": "You must be logged in to perform this action."}, status=401
+        )
+    orederitem = OrderItem.objects.filter(order_id=orderid).select_related('order__paymentmethod')
+    
+    
+   
+    
+
+    orderdetails = []
+
+    columns = [
+        "name",
+        "quantity",
+        "price",
+        "status",
+    ]
+
+    for item in orederitem:
+        
+        address = item.order
+        
+        data = [{
+                "state": address.state,
+                "district" : address.district,
+                "houseNo" : address.houseNo,
+                "pincode" : address.pincode,
+                "phoneNo" : address.phoneNo,
+                # "payementMethod" : item.paymentmethod.Method,
+            }
+        ]
+        
+        productdata = model_to_dict(item, fields=columns)
+        if item.order.paymentmethod:
+            methodname = item.order.paymentmethod.Method
+            
+        productdata["PaymentMethod"] = methodname
+        productdata["address"]= data
+       
+        orderdetails.append(productdata)
+       
+
+    return JsonResponse(orderdetails, safe=False, status=200)
 
 
 def salesInsights(request):
@@ -908,21 +1030,63 @@ def salesInsights(request):
 
         if user.is_authenticated:
 
-            allproduct = OrderItem.objects.all().distinct().values("name")
+            # allproduct = OrderItem.objects.all().distinct().values("name")
 
-            
-            insights = OrderItem.objects.values("name").annotate(
-                totalRevenue= Sum("price"),
-                totalQuantity = Sum("quantity"),
-                totalOrders = Count("id"),
-            ).order_by("name")
-            
-            return JsonResponse({"salesInsights": list(insights)}, safe=False, status=200)
-        
+            insights = (
+                OrderItem.objects.values("name")
+                .annotate(
+                    totalRevenue=Sum("price"),
+                    totalQuantity=Sum("quantity"),
+                    totalOrders=Count("id"),
+                )
+                .order_by("name")
+            )
+
+            return JsonResponse(
+                {"salesInsights": list(insights)}, safe=False, status=200
+            )
+
         else:
-             return JsonResponse(
+            return JsonResponse(
                 {"msg": "You must be logged in to perform this action."}, status=401
             )
 
     else:
         return JsonResponse({"msg": "Method not allowed."}, status=405)
+
+
+def downloadExcelData(request):
+    if request.method != "GET":
+        return JsonResponse({"msg": "Method not allowed."}, status=405)
+
+    user = request.user
+    
+    if not user.is_superuser:
+        return JsonResponse(
+            {"msg": "You don't have access for download report."}, status=403
+        )
+        
+
+    if not user.is_authenticated:
+        return JsonResponse(
+            {"msg": "You must be logged in to perform this action."}, status=401
+        )
+
+    data = (
+        OrderItem.objects.values("name")
+        .annotate(
+            totalRevenue=Sum("price"),
+            totalQuantity=Sum("quantity"),
+            totalOrders=Count("id"),
+        )
+        .order_by("name")
+    )
+
+    df = pd.DataFrame.from_dict(data)
+    print(df)
+    output=  BytesIO() 
+    with pd.ExcelWriter(output, engine="xlsxwriter") as writer:
+        df.to_excel(writer, sheet_name="sales report", index=False)
+    output.seek(0)
+
+    return FileResponse(output, as_attachment=True, filename="report.xlsx")

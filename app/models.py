@@ -54,13 +54,19 @@ class CartItem(models.Model):
     products = models.ForeignKey(products, on_delete=models.CASCADE)
     quantity  = models.IntegerField(default = 1)
     
-    
+class PaymentMethod(models.Model):
+    Method = models.CharField(max_length=200, unique=True)   
     
 class Order(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE)
     createAt= models.DateTimeField(auto_now_add=True)
     totalPrice = models.IntegerField()
-    shippingAddress = models.TextField()
+    state = models.CharField(max_length=200, null=True)
+    district = models.CharField(max_length=200, null=True)
+    houseNo= models.IntegerField(default=None, null=True)
+    phoneNo =models.CharField(max_length=10, null=True)
+    pincode =models.IntegerField(default=None, null=True)
+    paymentmethod = models.ForeignKey(PaymentMethod,on_delete=models.SET_NULL, null=True)
     
     
 class OrderItem(models.Model):
@@ -69,7 +75,6 @@ class OrderItem(models.Model):
     quantity = models.IntegerField()
     price = models.IntegerField()
     name = models.CharField(max_length=200, default=None)
-    shippingAddress = models.TextField(default=None)
     status = models.CharField(max_length=200, default=None)
     
     

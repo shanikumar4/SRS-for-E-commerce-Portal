@@ -91,10 +91,10 @@ def validate_add(add):
 
 
 def validate_id(id):
-    if id is None or re.match("^\S+$", id):
-        return False
-    else:
+    if re.match("[1-9]\d*$", id):
         return True
+    else:
+        return False
 
 
 def convert_gender(gender):
