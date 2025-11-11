@@ -17,6 +17,7 @@ from app.views import (
     order,
     cartdata,
     salesInsights,
+
 )
 
 

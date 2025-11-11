@@ -133,7 +133,7 @@ def validateimage(img):
         return False
     
 
-def updateUserDetails(firstName, lastName,  gender, phoneNo, profielimg, userid):
+def updateUserDetails(firstName, lastName, phoneNo, profielimg, userid):
     flag = 0
     if firstName and FirstName(firstName):
         x = User.objects.filter(id=userid).update(first_name=firstName)
@@ -141,9 +141,9 @@ def updateUserDetails(firstName, lastName,  gender, phoneNo, profielimg, userid)
     if lastName and LastName(lastName):
         x = User.objects.filter(id=userid).update(last_name=lastName)
         flag = 1    
-    if gender and validate_gender(gender):
-        x = User.objects.filter(id=userid).update(gender=gender)
-        flag = 1
+    # if gender and validate_gender(gender):
+    #     x = User.objects.filter(id=userid).update(gender_id=gender)
+    #     flag = 1
     if phoneNo and validate_phoneNo(phoneNo):
         x = User.objects.filter(id=userid).update(phone_No=phoneNo)
         flag = 1
@@ -156,7 +156,7 @@ def updateUserDetails(firstName, lastName,  gender, phoneNo, profielimg, userid)
         return False
 
 
-def updateProductDetails(updateid, name,  description, price, stock, upcategory):
+def updateProductDetails(updateid, name,  description, price, stock):
     flag = 0
     if name and validate(name):
         products.objects.filter(id=updateid).update(name=name, updateAt = timezone.now())
@@ -170,9 +170,9 @@ def updateProductDetails(updateid, name,  description, price, stock, upcategory)
     if stock:
         products.objects.filter(id=updateid).update(stock=stock, updateAt = timezone.now())
         flag = 1
-    if upcategory:
-        products.objects.filter(id=updateid).update(category=upcategory)
-        flag = 1
+    # if upcategory:
+    #     products.objects.filter(id=updateid).update(category=upcategory)
+    #     flag = 1
     if flag == 1:
         return True
     else:

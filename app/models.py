@@ -5,17 +5,17 @@ import datetime
 
 
 
+class Gender(models.Model):
+    gender = models.CharField(max_length=100, unique=True)
+    
+
 
 class User(AbstractUser):
     username=None
     email = models.EmailField(unique=True)
     phone_No =models.CharField(max_length=10)
-    GENDER_CHOICES = (
-        ('Male', 'MALE'),
-        ('Female', 'FEMALE'),
-        ('Other', 'OTHER')
-    )
-    gender = models.CharField(max_length=15, choices=GENDER_CHOICES)
+
+    gender = models.ForeignKey(Gender, on_delete=models.SET_NULL, null=True, blank=True)
     profileImage = models.ImageField(upload_to="profileImg/")
     
     
@@ -26,6 +26,8 @@ class User(AbstractUser):
     REQUIRED_FIELDS=[]
     
     
+class Category(models.Model):
+    category = models.CharField(max_length=200)
     
 class products(models.Model):
     name = models.CharField(max_length=200)
@@ -36,13 +38,8 @@ class products(models.Model):
     updateAt= models.DateTimeField(null= True, blank=True)
     deleteAt= models.DateTimeField(null= True, blank=True)
     active = models.BooleanField(default=True)
-    productCategory =(
-        ('Amber', 'Amber'),
-        ('Floral', 'Floral'),
-        ('Fresh', 'Fresh'),
-        ('Woody', 'Woody'),
-    ) 
-    category = models.CharField(max_length=6, choices=productCategory)
+ 
+    category = models.ForeignKey(Category, on_delete=models.SET_NULL, null=True)
     
     
     
