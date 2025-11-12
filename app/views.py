@@ -2,6 +2,15 @@ from django.shortcuts import render, redirect
 from django.http import JsonResponse, FileResponse
 from django.contrib.auth import authenticate, login, logout
 import re, json
+from django.core.mail import send_mail
+from django.utils import timezone
+from django.db.models import Sum, Count
+from app.models import User
+from django.forms.models import model_to_dict
+from django import forms
+import pandas as pd
+import csv, io, xlsxwriter
+from io import BytesIO
 from .models import (
     products,
     productImage,
@@ -13,14 +22,6 @@ from .models import (
     SalesInsights,
     PaymentMethod,
 )
-from django.utils import timezone
-from django.db.models import Sum, Count
-from app.models import User
-from django.forms.models import model_to_dict
-from django import forms
-import pandas as pd
-import csv, io, xlsxwriter
-from io import BytesIO
 from app.function import (
     validate_email,
     validate_pass,
@@ -278,11 +279,8 @@ def updateUser(request):
         if not User.objects.filter(id=userid).exists():
             return JsonResponse({"msg": "User not found."}, status=404)
 
-        if profileImg.content_type != "image/jpeg":
-            return JsonResponse(
-                {"msg": " Only JPEG images are allowed."},
-                status=400,
-            )
+       
+        
 
         if currentUser.is_authenticated:
             isgender = Gender.objects.get(gender=gendername)
@@ -1090,3 +1088,22 @@ def downloadExcelData(request):
     output.seek(0)
 
     return FileResponse(output, as_attachment=True, filename="report.xlsx")
+
+
+
+def email(request):
+     if request.method != "POST":
+        return JsonResponse({"msg": "Method not allowed."}, status=405)
+    
+     if send_mail(
+            subject='Subject here',
+            message='Here is the message.',
+            from_email='shani2405sk@gmail.com',
+            recipient_list=['shani4812sk@gmail.com'],
+            fail_silently=False,
+        ):
+         
+        
+        return JsonResponse({"msg": "mail send."}, status=200)
+     else:
+        return JsonResponse({"msg": "dontsend send."}, status=200)
