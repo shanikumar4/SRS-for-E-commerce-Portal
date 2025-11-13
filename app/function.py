@@ -133,7 +133,7 @@ def validateimage(img):
         return False
     
 
-def updateUserDetails(firstName, lastName, phoneNo, profielimg, userid):
+def updateUserDetails(firstName, lastName, phoneNo, userid):
     flag = 0
     if firstName and FirstName(firstName):
         x = User.objects.filter(id=userid).update(first_name=firstName)
@@ -147,9 +147,9 @@ def updateUserDetails(firstName, lastName, phoneNo, profielimg, userid):
     if phoneNo and validate_phoneNo(phoneNo):
         x = User.objects.filter(id=userid).update(phone_No=phoneNo)
         flag = 1
-    if profielimg:
-        x = User.objects.filter(id=userid).update(profileImage=profielimg)
-        flag = 1
+    # if profielimg:
+    #     x = User.objects.filter(id=userid).update(profileImage=profielimg)
+    #     flag = 1
     if flag == 1:
         return True
     else:

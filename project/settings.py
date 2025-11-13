@@ -146,7 +146,7 @@ STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 # https://docs.djangoproject.com/en/4.2/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
-AUTH_USER_MODEL= "app.User"
+AUTH_USER_MODEL= "app.Patient"
 
 CORS_ALLOW_ALL_ORIGINS = True
 
@@ -168,9 +168,9 @@ import dj_database_url
 
 
 EMAIL_BACKEND= 'django.core.mail.backends.smtp.EmailBackend'
-EMAIL_HOST = 'sandbox.smtp.mailtrap.io'
+EMAIL_HOST = 'smtp.gmail.com'
 EMAIL_PORT= 587
-EMAIL_HOST_USER= 'be96abf3ae61bf'
-EMAIL_HOST_PASSWORD = 'd13c017a775053'
+EMAIL_HOST_USER= 'shani2405sk@gmail.com'
+EMAIL_HOST_PASSWORD = 'ttnp tvgs fupt ckrn'
 EMAIL_USE_TLS= True
 EMAIL_USE_SSL = False

@@ -11,6 +11,7 @@ from django import forms
 import pandas as pd
 import csv, io, xlsxwriter
 from io import BytesIO
+from django.conf import settings
 from .models import (
     products,
     productImage,
@@ -41,6 +42,7 @@ from app.function import (
 )
 
 
+
 def gender(request):
     if request.method == "GET":
         genders = Gender.objects.all()
@@ -54,51 +56,74 @@ def gender(request):
 
 def productCategory(request):
     if request.method == "GET":
-        # category = ["Amber", "Floral", "Fresh", "Woody"]
         category = Category.objects.all()
         data = [c.category for c in category]
         return JsonResponse({"category": data}, status=200)
 
     else:
         return JsonResponse({"msg": "Method not allowed"}, status=405)
-    
+
+
+# def gender(request):
+#     if request.method == "GET":
+#         genders = Gender.objects.all().values("id", "gender")
+
+#         return JsonResponse(list(genders), safe=False, status=200)
+
+#     else:
+#         return JsonResponse({"msg": "Method not allowed"}, status=405)
+
+
+# def productCategory(request):
+#     if request.method == "GET":
+#         category = Category.objects.all().values("id", "category")
+#         return JsonResponse(list(category), safe=False, status=200)
+
+#     else:
+#         return JsonResponse({"msg": "Method not allowed"}, status=405)
+
 
 def addcategory(request):
     if request.method != "POST":
-         return JsonResponse({"msg": "Method not allowed."}, status=405)
-     
+        return JsonResponse({"msg": "Method not allowed."}, status=405)
+
     newcategory = request.POST.get("category")
 
     user = request.user
-    
-    if not newcategory: 
-      return JsonResponse(
+
+    if not newcategory:
+        return JsonResponse(
             {"msg": "Please provide a Category which you want to add."}, status=400
         )
 
-    
     if not user.is_authenticated:
         return JsonResponse(
             {"msg": "You must be logged in to perform this action."}, status=401
         )
-    
+
     if not user.is_superuser:
         return JsonResponse(
             {"msg": "You dont't have accese to add category."}, status=401
         )
-        
-        
-    Category.objects.create(category = newcategory)    
-    return JsonResponse(
-            {"msg": "New Categroy added."}, status=200
-        )
-    
+
+    Category.objects.create(category=newcategory)
+    return JsonResponse({"msg": "New Categroy added."}, status=200)
+
+
+# def payemntmethod(request):
+#     if request.method == "GET":
+#         payment = PaymentMethod.objects.all().values("id", "Method")
+
+#         return JsonResponse(list(payment), safe=False, status=200)
+
+#     else:
+#         return JsonResponse({"msg": "Method not allowed"}, status=405)
 
 
 def payemntmethod(request):
     if request.method == "GET":
-        payment = Category.objects.all()
-        data = [p.payment for p in payment]
+        payment = PaymentMethod.objects.all()
+        data = [p.Method for p in payment]
         return JsonResponse({"paymethod": data}, status=200)
 
     else:
@@ -106,109 +131,108 @@ def payemntmethod(request):
 
 
 def signupview(request):
-    if request.method == "POST":
+    if request.method != "POST":
+        return JsonResponse({"msg": "Method not allowed."}, status=405)
 
-        if not request.body.strip():
-            return JsonResponse(
-                {"Error": "Please provide user information to sign up."}, status=400
-            )
+    if not request.body.strip():
+        return JsonResponse(
+            {"Error": "Please provide user information to sign up."}, status=400
+        )
 
-        # data = json.loads(request.body)
+    # data = json.loads(request.body)
 
-        first_name = request.POST.get("first_name")
-        last_name = request.POST.get("last_name")
-        email = request.POST.get("email")
-        phoneNo = request.POST.get("phone_No")
-        gendername = request.POST.get("gender")
-        password = request.POST.get("password")
-        conf_password = request.POST.get("Confirm_password")
-        profileImg = request.FILES.get("image")
+    first_name = request.POST.get("first_name")
+    last_name = request.POST.get("last_name")
+    email = request.POST.get("email")
+    phoneNo = request.POST.get("phone_No")
+    gendername = request.POST.get("gender")
+    password = request.POST.get("password")
+    conf_password = request.POST.get("Confirm_password")
+    profileImg = request.FILES.get("image")
 
-        if profileImg.content_type != "image/jpeg":
-            return JsonResponse(
-                {"msg": " Only JPEG images are allowed."},
-                status=400,
-            )
+    image_type = ["image/jpeg", "image/png", "image/gif"]
 
-        if (
-            password
-            and email
-            and first_name
-            and conf_password
-            and phoneNo
-            and gendername
-            # and profileImg
-        ):
+    if profileImg.content_type not in image_type:
+        return JsonResponse(
+            {"msg": " Only JPEG, PNG and GIF images are allowed."},
+            status=400,
+        )
+    right_gender = Gender.objects.filter(gender=gendername)
+    
+    if not right_gender:
+        return JsonResponse(
+            {"msg": "Invalid gender."},
+            status=400,
+        )
 
-            isgender = Gender.objects.get(gender=gendername)
+    if User.objects.filter(email=email).exists():
+        return JsonResponse(
+            {"msg": "An account with this email already exists."}, status=409
+        )
 
-            if not isgender:
-                return JsonResponse(
-                    {"msg": "Invalid gender."},
-                    status=400,
-                )
+    if password != conf_password:
+        return JsonResponse(
+            {"msg": "Password and confirm password both must be same"},
+            status=400,
+        )
 
-            if User.objects.filter(email=email).exists():
-                return JsonResponse(
-                    {"msg": "An account with this email already exists."}, status=409
-                )
+    if not validate_phoneNo(phoneNo):
+        return JsonResponse({"msg": "Please enter a valid phone number."}, status=400)
 
-            if password != conf_password:
-                return JsonResponse(
-                    {"msg": "Password and confirm password both must be same"},
-                    status=400,
-                )
+    if not validate_pass(password):
+        return JsonResponse(
+            {
+                "msg": "Password must be at least 6 characters long and include an uppercase letter, a lowercase letter, a number, and a special character."
+            },
+            status=400,
+        )
+    if not validate_email(email):
+        return JsonResponse({"msg": "A valid email address is required."}, status=400)
+    if not FirstName(first_name):
+        return JsonResponse(
+            {"msg": "First name is required and must contain only letters."},
+            status=400,
+        )
+    if not LastName(last_name):
+        return JsonResponse({"msg": "Last name must contain only letters."}, status=400)
+    if (
+        password
+        and email
+        and first_name
+        and conf_password
+        and phoneNo
+        and gendername
+        # and profileImg
+    ):
 
-            if not validate_phoneNo(phoneNo):
-                return JsonResponse(
-                    {"msg": "Please enter a valid phone number."}, status=400
-                )
+       
 
-            if not validate_pass(password):
-                return JsonResponse(
-                    {
-                        "msg": "Password must be at least 6 characters long and include an uppercase letter, a lowercase letter, a number, and a special character."
-                    },
-                    status=400,
-                )
-            if not validate_email(email):
-                return JsonResponse(
-                    {"msg": "A valid email address is required."}, status=400
-                )
-            if not FirstName(first_name):
-                return JsonResponse(
-                    {"msg": "First name is required and must contain only letters."},
-                    status=400,
-                )
-            if not LastName(last_name):
-                return JsonResponse(
-                    {"msg": "Last name must contain only letters."}, status=400
-                )
-            else:
+        isgender = Gender.objects.get(gender=gendername)
 
-                user = User(
-                    email=email,
-                    first_name=first_name,
-                    last_name=last_name,
-                    phone_No=phoneNo,
-                    gender=isgender,
-                    profileImage=profileImg,
-                )
+        user = User(
+            email=email,
+            first_name=first_name,
+            last_name=last_name,
+            phone_No=phoneNo,
+            gender=isgender,
+            profileImage=profileImg,
+        )
 
-                user.set_password(password)
-                user.save()
+        user.set_password(password)
+        user.save()
 
-                return JsonResponse(
-                    {"msg": "User registered successfully."}, status=201
-                )
+        send_mail(
+            subject="Signup",
+            message="signup successfully.",
+            from_email=settings.EMAIL_HOST_USER,
+            recipient_list=[email],
+            fail_silently=False,
+        )
 
-        else:
-            return JsonResponse(
-                {"msg": "Please fill in all required fields."}, status=400
-            )
+        return JsonResponse({"msg": "User registered successfully."}, status=201)
+
     else:
-
-        return JsonResponse({"msg": "Method not allowed"}, status=405)
+        return JsonResponse({"msg": "Please fill in all required fields."}, status=400)
 
 
 def loginview(request):
@@ -270,6 +294,14 @@ def updateUser(request):
 
         isValidGender = Gender.objects.filter(gender=gendername)
 
+        image_type = ["image/jpeg", "image/png", "image/gif"]
+
+        if profileImg.content_type not in image_type:
+            return JsonResponse(
+                {"msg": " Only JPEG, PNG and GIF images are allowed."},
+                status=400,
+            )
+
         if not isValidGender:
             return JsonResponse(
                 {"msg": "Invalid gender."},
@@ -278,9 +310,6 @@ def updateUser(request):
 
         if not User.objects.filter(id=userid).exists():
             return JsonResponse({"msg": "User not found."}, status=404)
-
-       
-        
 
         if currentUser.is_authenticated:
             isgender = Gender.objects.get(gender=gendername)
@@ -296,9 +325,14 @@ def updateUser(request):
                 first_name,
                 last_name,
                 phoneNo,
-                profileImg,
                 userid,
             ):
+
+                if profileImg:
+                    user = User.objects.get(id=userid)
+                    user.profileImage = profileImg
+                    user.save()
+
                 return JsonResponse(
                     {"msg": "Your profile has been updated successfully."}, status=200
                 )
@@ -391,22 +425,19 @@ def addproduct(request):
 
         images = request.FILES.getlist("image")
 
-        for image in images:
-            if image.content_type != "image/jpeg" and image.content_type != "image/png":
-                return JsonResponse(
-                    {"msg": " Only JPEG and png images are allowed."},
-                    status=400,
-                )
+        image_type = ["image/jpeg", "image/png", "image/gif"]
 
-        # categoryItem = ["Amber", "Floral", "Fresh", "Wooy"]
-
-        categoryitem = Category.objects.get(category=categoryname)
-
-        if not categoryitem:
+        if images.content_type not in image_type:
             return JsonResponse(
-                {
-                    "msg": "Invalid category. Please select from 'Amber', 'Floral', 'Fresh', or 'Woody'."
-                },
+                {"msg": " Only JPEG, PNG and GIF images are allowed."},
+                status=400,
+            )
+
+        is_category = Category.objects.filter(category=categoryname)
+
+        if not is_category:
+            return JsonResponse(
+                {"msg": "Invalid category."},
                 status=400,
             )
         if not validateprice(price):
@@ -427,6 +458,7 @@ def addproduct(request):
             )
 
         if request.user.is_authenticated:
+            categoryitem = Category.objects.get(category=categoryname)
             if name and description:
                 product = products(
                     name=name,
@@ -475,17 +507,22 @@ def updateProduct(request):
         productImgId = request.POST.get("productImgId")
         categoryname = request.POST.get("category")
 
-        # categoryItem = ["Amber", "Floral", "Fresh", "Woody"]\\
+        image_type = ["image/jpeg", "image/png", "image/gif"]
 
-        if image.content_type != "image/jpeg" and image.content_type != "image/png":
+        if image.content_type not in image_type:
             return JsonResponse(
-                {"msg": " Only JPEG and png images are allowed."},
+                {"msg": " Only JPEG, PNG and GIF images are allowed."},
                 status=400,
             )
 
-        if not Category.objects.filter(category=categoryname).exists():
+        is_category = Category.objects.filter(category=categoryname)
+
+        if not is_category:
             return JsonResponse(
-                {"msg": "Invalid Category. Please enter a valid Category."}, status=400
+                {
+                    "msg": "Invalid category. Please select from 'Amber', 'Floral', 'Fresh', or 'Woody'."
+                },
+                status=400,
             )
 
         if not validateprice(price):
@@ -525,18 +562,10 @@ def updateProduct(request):
         if current_user.is_authenticated:
 
             iscategory = Category.objects.get(category=categoryname)
-            if not iscategory:
-                return JsonResponse(
-                    {
-                        "msg": "Invalid category. Please select from 'Amber', 'Floral', 'Fresh', or 'Woody'."
-                    },
-                    status=400,
-                )
 
-            else:
-                updatecategory = products.objects.get(id=updateid)
-                updatecategory.category = iscategory
-                updatecategory.save()
+            updatecategory = products.objects.get(id=updateid)
+            updatecategory.category = iscategory
+            updatecategory.save()
 
             if updateProductDetails(updateid, name, description, price, stock):
                 if productImgId:
@@ -850,18 +879,20 @@ def order(request):
         totalprice = request.POST.get("totalPrice")
         state = request.POST.get("state")
         district = request.POST.get("dist")
-        houseNo = request.POST.get("house")
+        city = request.POST.get("city")
         pincode = request.POST.get("pin")
         phoneNo = request.POST.get("phone")
         user = request.user
         userid = user.id
         method = request.POST.get("method")
-        
-        if not PaymentMethod.objects.filter(Method=method).exists():
-             return JsonResponse(
-                {"msg": "Please Select a Valid payment method."}, status=400
-            )
 
+        is_method = PaymentMethod.objects.filter(Method=method)
+
+        if not is_method:
+            return JsonResponse(
+                {"msg": "Invalid payment method. Please select valid method."},
+                status=400,
+            )
         if not totalprice:
             return JsonResponse(
                 {"msg": "Total price is required to place an order."}, status=400
@@ -875,9 +906,9 @@ def order(request):
                 {"msg": "District is required to place an order."}, status=400
             )
 
-        if not houseNo:
+        if not city:
             return JsonResponse(
-                {"msg": "House number is required to place an order."}, status=400
+                {"msg": "city is required to place an order."}, status=400
             )
 
         if not pincode:
@@ -913,20 +944,20 @@ def order(request):
                 )
 
             new_order = Order.objects.create(
-                totalPrice=totalprice, 
-                state = state,
-                district = district,
-                houseNo = houseNo,
-                pincode = pincode,
-                phoneNo = phoneNo,
+                totalPrice=totalprice,
+                state=state,
+                district=district,
+                houseNo=city,
+                pincode=pincode,
+                phoneNo=phoneNo,
                 user_id=userid,
-                paymentmethod= methods
+                paymentmethod=methods,
             )
 
             cartitem = CartItem.objects.filter(user_id=user.id).select_related(
                 "products"
             )
-            
+
             # method = Order.objects.filter(id = new_order).select_related("paymentmethod")
 
             data = []
@@ -940,7 +971,6 @@ def order(request):
                         price=item.products.price,
                         name=item.products.name,
                         status="Confirmed",
-                        
                     )
                 )
 
@@ -959,31 +989,24 @@ def order(request):
 
 def orderdetails(request):
     if request.method != "GET":
-       
+
         return JsonResponse({"msg": "Method not allowed."}, status=405)
     user = request.user
 
     orderid = request.GET.get("id")
-    
+
     if not orderid:
         return JsonResponse({"msg": "Order id required."}, status=400)
     if not validate_id(orderid):
         return JsonResponse({"msg": "invalid order id."}, status=400)
-    
-  
-    
-    
-   
 
     if not user.is_authenticated:
         return JsonResponse(
             {"msg": "You must be logged in to perform this action."}, status=401
         )
-    orederitem = OrderItem.objects.filter(order_id=orderid).select_related('order__paymentmethod')
-    
-    
-   
-    
+    orederitem = OrderItem.objects.filter(order_id=orderid).select_related(
+        "order__paymentmethod"
+    )
 
     orderdetails = []
 
@@ -995,28 +1018,28 @@ def orderdetails(request):
     ]
 
     for item in orederitem:
-        
+
         address = item.order
-        
-        data = [{
+
+        data = [
+            {
                 "state": address.state,
-                "district" : address.district,
-                "houseNo" : address.houseNo,
-                "pincode" : address.pincode,
-                "phoneNo" : address.phoneNo,
+                "district": address.district,
+                "city": address.city,
+                "pincode": address.pincode,
+                "phoneNo": address.phoneNo,
                 # "payementMethod" : item.paymentmethod.Method,
             }
         ]
-        
+
         productdata = model_to_dict(item, fields=columns)
         if item.order.paymentmethod:
             methodname = item.order.paymentmethod.Method
-            
+
         productdata["PaymentMethod"] = methodname
-        productdata["address"]= data
-       
+        productdata["address"] = data
+
         orderdetails.append(productdata)
-       
 
     return JsonResponse(orderdetails, safe=False, status=200)
 
@@ -1033,9 +1056,9 @@ def salesInsights(request):
             insights = (
                 OrderItem.objects.values("name")
                 .annotate(
-                    totalRevenue=Sum("price"),
-                    totalQuantity=Sum("quantity"),
-                    totalOrders=Count("id"),
+                    Total_Revenue=Sum("price"),
+                    Total_Quantity=Sum("quantity"),
+                    Total_Orders=Count("id"),
                 )
                 .order_by("name")
             )
@@ -1058,12 +1081,11 @@ def downloadExcelData(request):
         return JsonResponse({"msg": "Method not allowed."}, status=405)
 
     user = request.user
-    
+
     if not user.is_superuser:
         return JsonResponse(
             {"msg": "You don't have access for download report."}, status=403
         )
-        
 
     if not user.is_authenticated:
         return JsonResponse(
@@ -1082,28 +1104,9 @@ def downloadExcelData(request):
 
     df = pd.DataFrame.from_dict(data)
     print(df)
-    output=  BytesIO() 
+    output = BytesIO()
     with pd.ExcelWriter(output, engine="xlsxwriter") as writer:
         df.to_excel(writer, sheet_name="sales report", index=False)
     output.seek(0)
 
     return FileResponse(output, as_attachment=True, filename="report.xlsx")
-
-
-
-def email(request):
-     if request.method != "POST":
-        return JsonResponse({"msg": "Method not allowed."}, status=405)
-    
-     if send_mail(
-            subject='Subject here',
-            message='Here is the message.',
-            from_email='shani2405sk@gmail.com',
-            recipient_list=['shani4812sk@gmail.com'],
-            fail_silently=False,
-        ):
-         
-        
-        return JsonResponse({"msg": "mail send."}, status=200)
-     else:
-        return JsonResponse({"msg": "dontsend send."}, status=200)

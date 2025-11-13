@@ -63,7 +63,7 @@ class Order(models.Model):
     totalPrice = models.IntegerField()
     state = models.CharField(max_length=200, null=True)
     district = models.CharField(max_length=200, null=True)
-    houseNo= models.IntegerField(default=None, null=True)
+    houseNo= models.CharField(max_length=200, default=None, null=True)
     phoneNo =models.CharField(max_length=10, null=True)
     pincode =models.IntegerField(default=None, null=True)
     paymentmethod = models.ForeignKey(PaymentMethod,on_delete=models.SET_NULL, null=True)

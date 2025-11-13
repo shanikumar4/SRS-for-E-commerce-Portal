@@ -21,7 +21,7 @@ from app.views import (
     orderdetails,
     payemntmethod,
     addcategory,
-    email,
+ 
 
 )
 
@@ -48,6 +48,5 @@ urlpatterns = [
     path('cartdata/',cartdata), 
     path('sales/', salesInsights),
     path('report/', downloadExcelData),
-    path('addcategory/', addcategory),
-     path('mail/', email),   
+    path('addcategory/', addcategory),  
 ]
